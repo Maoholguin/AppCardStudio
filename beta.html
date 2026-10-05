@@ -5535,6 +5535,20 @@ async function pullBacklog(){
   for(const name of [...got.keys()].sort()){ const r=await acsBL.merge(got.get(name),{remote:true}); added+=r.added; set.add(name); }
   await acsBL.meta.set('seen',[...set]); return added;
 }
+/* shared apps arrive as GitHub issues (title = app name, body = JSON); each one is merged and then closed */
+async function pullIssues(){
+  if(!window.acsBL) return 0;
+  try{
+    const r=await ghFetch('/issues?state=open&per_page=100&sort=created&direction=asc',{soft:true}); if(!r) return 0;
+    const list=(await r.json()).filter(i=>!i.pull_request); if(!list.length) return 0;
+    const items=list.map(i=>{ let o=null; const b=String(i.body||'').trim(); try{ o=JSON.parse(b); }catch(e){}
+      if(!o||typeof o!=='object'||Array.isArray(o)) o={url:/^https?:\/\/\S+$/.test(b)?b:''};
+      if(!String(o.name||'').trim()) o.name=i.title; if(!o.added) o.added=i.created_at; return o; });
+    const m=await acsBL.merge(items,{remote:true});
+    for(const i of list){ try{ await ghFetch('/issues/'+i.number,{method:'PATCH',body:{state:'closed'}}); }catch(e){ if(e.code==='bad_token') throw e; } }
+    return m.added;
+  }catch(e){ if(e.code==='bad_token'||e.code==='network') throw e; return 0; }
+}
 async function syncState(){
   if(!window.acsBL) return;
   let remote=null; try{ const t=await ghText('state/backlog.json'); remote=t?JSON.parse(t):null; }catch(e){ if(e.code&&e.code!=='unprocessable') throw e; }
@@ -5603,7 +5617,7 @@ async function run(reason){
   if(reason==='open'&&Date.now()-GHS.lastRun<20000) return;
   GHS.busy=true; GHS.lastRun=Date.now(); ghPaint();
   try{
-    const n=await pullBacklog(); await pushLocalBacklog(); await syncState(); await syncArchive();
+    const n=(await pullBacklog())+(await pullIssues()); await pushLocalBacklog(); await syncState(); await syncArchive();
     GHS.state='ok'; GHS.msg=''; GHS.last=Date.now(); GHS.news=n;
     if(n&&reason!=='manual'&&reason!=='open') toast(trn(n,'{n} app nueva en el Backlog','{n} apps nuevas en el Backlog'),2600);
   }catch(e){ GHS.state='err'; GHS.msg=ghMsg(e); }

@@ -5260,6 +5260,7 @@ async function blLoad(){
 }
 const blLive=()=>BL.items.filter(i=>!i.deleted);
 const blPending=()=>blLive().filter(i=>!i.done);
+const blTrue=v=>typeof v==='string'?!/^(|0|false|no|nil|null)$/i.test(v.trim()):!!v;
 function blTime(v){ if(typeof v==='number') return v>0?v:0; const t=Date.parse(v||''); return isNaN(t)?0:t; }
 /* Merge a list of {name,url,description,added,done} into the backlog. Never resurrects deleted items. */
 async function blMerge(list,opt){
@@ -5273,10 +5274,10 @@ async function blMerge(list,opt){
       if(ex.deleted){ skipped++; return; }
       let ch=false; if(rem&&!ex.rem){ ex.rem=true; ch=true; } if(!ex.url&&url){ ex.url=url; ch=true; } if(!ex.description&&desc){ ex.description=desc; ch=true; }
       if(!ex.added&&blTime(r.added)){ ex.added=blTime(r.added); ch=true; }
-      if(r.done&&!ex.done&&!ex.t){ ex.done=true; ex.doneAt=blTime(r.doneAt)||Date.now(); ch=true; }
+      if(blTrue(r.done)&&!ex.done&&!ex.t){ ex.done=true; ex.doneAt=blTime(r.doneAt)||Date.now(); ch=true; }
       if(ch) touched.set(key,ex); else skipped++; return;
     }
-    const it={key,name,url,description:desc,added:blTime(r.added),done:!!r.done,doneAt:r.done?(blTime(r.doneAt)||0):0,deleted:false,t:0,seq:++seq,rem:rem};
+    const it={key,name,url,description:desc,added:blTime(r.added),done:blTrue(r.done),doneAt:blTrue(r.done)?(blTime(r.doneAt)||0):0,deleted:false,t:0,seq:++seq,rem:rem};
     map.set(key,it); touched.set(key,it); added++;
   });
   if(touched.size){ await blPutMany([...touched.values()]); BL.items=[...map.values()]; }
@@ -5525,9 +5526,21 @@ function blPaintSync(){
   s.textContent=st.state==='off'?tr('Sin sincronizar · conecta GitHub'):st.state==='busy'?tr('Sincronizando…'):st.state==='err'?tr('Error al sincronizar')+(st.msg?' · '+st.msg:''):tr('Sincronizado')+(st.last?' · '+new Date(st.last).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'');
 }
 function blClose(){ const ov=$('blOv'); if(ov) ov.hidden=true; BL.urls.forEach(u=>URL.revokeObjectURL(u)); BL.urls=[]; BL.open=false; document.documentElement.style.overflow=''; }
+
+/* JSON that may be several objects one after another (what the iOS Shortcut writes), or an array / {apps:[…]} */
+function blParseLoose(t){
+  try{ return JSON.parse(t); }catch(e){}
+  const m=t.match(/```(?:json)?\s*([\s\S]*?)```/); if(m){ try{ return JSON.parse(m[1]); }catch(e){} t=m[1]; }
+  const out=[]; let d=0,inS=false,esc=false,st=-1;
+  for(let i=0;i<t.length;i++){ const c=t[i];
+    if(inS){ if(esc) esc=false; else if(c==='\\') esc=true; else if(c==='"') inS=false; continue; }
+    if(c==='"') inS=true; else if(c==='{'){ if(d===0) st=i; d++; } else if(c==='}'){ d--; if(d===0&&st>=0){ try{ out.push(JSON.parse(t.slice(st,i+1))); }catch(e){} st=-1; } }
+  }
+  if(!out.length) throw new Error('json'); return out;
+}
 async function blImportFile(file){
   try{
-    const t=await file.text(); let j; try{ j=JSON.parse(t); }catch(e){ const m=t.match(/```(?:json)?\s*([\s\S]*?)```/); j=JSON.parse(m?m[1]:t); }
+    const t=await file.text(); let j=blParseLoose(t);
     if(j&&!Array.isArray(j)) j=j.items||j.apps||j.reminders||[j];
     const r=await blMerge(j); toast(trn(r.added,'{n} app añadida','{n} apps añadidas')+(r.skipped?' · '+trn(r.skipped,'{n} ya estaba','{n} ya estaban'):''),3600);
     if(r.added&&window.acsSync&&acsSync.queueState) acsSync.queueState();

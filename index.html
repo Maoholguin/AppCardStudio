@@ -5182,7 +5182,7 @@ function initArchive(){
   }
   if(!$('archBtn')){
     const top=document.querySelector('header.top'), theme=$('themeBtn');
-    if(top&&theme){ const b=el('button','btn'); b.type='button'; b.id='archBtn'; b.addEventListener('click',archShow); top.appendChild(b); }
+    if(top&&theme){ const b=el('button','btn'); b.type='button'; b.id='archBtn'; b.addEventListener('click',archShow); top.insertBefore(b,top.querySelector('label.sr')||theme); }
   }
   if(typeof initBacklog==='function') initBacklog();
   archPaintBtn(); archPaintEdit(); const u=$('btnUpd'); if(u) u.lastElementChild.textContent=tr('Actualizar en el archivo'); const xb=document.querySelector('#archEdit button'); if(xb) xb.textContent=tr('Cancelar edición');

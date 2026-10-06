@@ -4394,15 +4394,17 @@ function pumpFrames({v,compose,ctl,upd,dur,onFrame,adaptive=true}){
   // Plays the video once in real time and calls onFrame(mediaTime) for every presented frame.
   return new Promise((resolve,reject)=>{
     let finished=false;
-    const finish=()=>{ if(finished) return; finished=true; v.removeEventListener('ended',onEnd); try{ v.pause(); v.playbackRate=1; }catch(e){} resolve(); };
+    let finish=()=>{ if(finished) return; finished=true; v.removeEventListener('ended',onEnd); try{ v.pause(); v.playbackRate=1; }catch(e){} resolve(); };
     const onEnd=()=>setTimeout(finish,60);
     v.addEventListener('ended',onEnd);
     const useRvfc='requestVideoFrameCallback' in v;
     // Timestamps come from the video's own media time, so playing slower never changes the result:
     // if composing + encoding a frame takes too long, slow the playback down instead of dropping frames.
     let work=0, fi=1000/30, lastMt=-1, rate=1;
+    let sid=0, busy=false, lastProg=performance.now();
+    const sched=()=>{ const id=++sid; if(useRvfc) v.requestVideoFrameCallback((n,m)=>{ if(id===sid) step(n,m); }); else requestAnimationFrame(()=>{ if(id===sid) step(0,null); }); };
     const step=async(now,meta)=>{
-      if(finished) return;
+      if(finished) return; busy=true; lastProg=performance.now();
       if(ctl.cancel){ finished=true; v.removeEventListener('ended',onEnd); try{ v.pause(); v.playbackRate=1; }catch(e){} return resolve(); }
       const mt=meta&&typeof meta.mediaTime==='number'?meta.mediaTime:v.currentTime;
       const t0=performance.now();
@@ -4412,11 +4414,15 @@ function pumpFrames({v,compose,ctl,upd,dur,onFrame,adaptive=true}){
       lastMt=mt;
       const want=Math.max(.2,Math.min(1,.55*fi/Math.max(1,work)));
       if(adaptive&&Math.abs(want-rate)/rate>.12){ rate=want; try{ v.playbackRate=rate; }catch(e){} }
-      upd(mt);
+      upd(mt); busy=false; lastProg=performance.now();
       if(mt>=dur-0.02){ return finish(); }
-      if(useRvfc) v.requestVideoFrameCallback(step); else requestAnimationFrame(()=>step(0,null));
+      sched();
     };
-    if(useRvfc) v.requestVideoFrameCallback(step); else requestAnimationFrame(()=>step(0,null));
+    // watchdog: if no frame arrives for a few seconds (a dropped callback, a video that stalled), restart playback and re-arm the callback
+    const wd=setInterval(()=>{ if(finished){ clearInterval(wd); return; } if(!busy&&performance.now()-lastProg>3000){ lastProg=performance.now(); try{ v.playbackRate=1; const q=v.play(); if(q&&q.catch) q.catch(()=>{}); }catch(e){} sched(); } },1500);
+    const _fin=finish; finish=()=>{ clearInterval(wd); _fin(); };
+    sched();
+    try{ v.playbackRate=1; v.muted=true; }catch(e){}
     const p=v.play(); if(p&&p.catch) p.catch(reject);
   });
 }

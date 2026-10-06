@@ -4321,7 +4321,7 @@ function initVideoUi(){
   sk.addEventListener('input',()=>{ if(!hasVideoThumb()) return; const v=S.thumb.img; v.currentTime=parseFloat(sk.value)/1000*(v.duration||0); $('vtime').textContent=fmtTime(v.currentTime)+' / '+fmtTime(v.duration); });
   const stopSeek=()=>{ seeking=false; }; sk.addEventListener('pointerup',stopSeek); sk.addEventListener('change',stopSeek);
   $('btnVideo').addEventListener('click',()=>dlGate($('btnVideo'),exportVideo));
-  $('btnExpCancel').addEventListener('click',()=>{ if(exporting) exporting.cancel=true; });
+  $('btnExpCancel').addEventListener('click',()=>{ if(exporting){ exporting.cancel=true; try{ exporting.onCancel&&exporting.onCancel(); }catch(e){} } });
 }
 
 /* ---------- export: WebCodecs (H.264) + mp4-muxer; MediaRecorder as a fallback ---------- */
@@ -4394,23 +4394,24 @@ function pumpFrames({v,compose,ctl,upd,dur,onFrame,adaptive=true}){
   // Plays the video once in real time and calls onFrame(mediaTime) for every presented frame.
   return new Promise((resolve,reject)=>{
     let finished=false;
-    let finish=()=>{ if(finished) return; finished=true; v.removeEventListener('ended',onEnd); try{ v.pause(); v.playbackRate=1; }catch(e){} resolve(); };
+    let finish=()=>{ if(finished) return; finished=true; v.removeEventListener('ended',onEnd); try{ v.pause(); v.playbackRate=1; }catch(e){} resolve({stalled:false,mt:lastMt}); };
     const onEnd=()=>setTimeout(finish,60);
     v.addEventListener('ended',onEnd);
     const useRvfc='requestVideoFrameCallback' in v;
     // Timestamps come from the video's own media time, so playing slower never changes the result:
     // if composing + encoding a frame takes too long, slow the playback down instead of dropping frames.
-    let work=0, fi=1000/30, lastMt=-1, rate=1;
+    let work=0, fi=1000/30, lastMt=-1, rate=1, lastAdv=performance.now();
     let sid=0, busy=false, lastProg=performance.now();
     const sched=()=>{ const id=++sid; if(useRvfc) v.requestVideoFrameCallback((n,m)=>{ if(id===sid) step(n,m); }); else requestAnimationFrame(()=>{ if(id===sid) step(0,null); }); };
     const step=async(now,meta)=>{
       if(finished) return; busy=true; lastProg=performance.now();
-      if(ctl.cancel){ finished=true; v.removeEventListener('ended',onEnd); try{ v.pause(); v.playbackRate=1; }catch(e){} return resolve(); }
+      if(ctl.cancel){ finished=true; v.removeEventListener('ended',onEnd); try{ v.pause(); v.playbackRate=1; }catch(e){} return resolve({stalled:false,mt:lastMt}); }
       const mt=meta&&typeof meta.mediaTime==='number'?meta.mediaTime:v.currentTime;
       const t0=performance.now();
       try{ await onFrame(mt); }catch(e){ finished=true; v.removeEventListener('ended',onEnd); try{ v.pause(); v.playbackRate=1; }catch(_){} return reject(e); }
       const w=performance.now()-t0; work = work? work*.7+w*.3 : w;
       if(lastMt>=0){ const d=(mt-lastMt)*1000; if(d>8&&d<fi) fi=d; }
+      if(mt>lastMt+0.001) lastAdv=performance.now();
       lastMt=mt;
       const want=Math.max(.2,Math.min(1,.55*fi/Math.max(1,work)));
       if(adaptive&&Math.abs(want-rate)/rate>.12){ rate=want; try{ v.playbackRate=rate; }catch(e){} }
@@ -4418,13 +4419,28 @@ function pumpFrames({v,compose,ctl,upd,dur,onFrame,adaptive=true}){
       if(mt>=dur-0.02){ return finish(); }
       sched();
     };
-    // watchdog: if no frame arrives for a few seconds (a dropped callback, a video that stalled), restart playback and re-arm the callback
-    const wd=setInterval(()=>{ if(finished){ clearInterval(wd); return; } if(!busy&&performance.now()-lastProg>3000){ lastProg=performance.now(); try{ v.playbackRate=1; const q=v.play(); if(q&&q.catch) q.catch(()=>{}); }catch(e){} sched(); } },1500);
+    // watchdog: when the media time does not advance for a few seconds (playback blocked or stalled by the browser), nudge once, then hand over to frame-by-frame seeking
+    let nudged=false;
+    const wd=setInterval(()=>{
+      if(finished){ clearInterval(wd); return; }
+      const idle=performance.now()-lastAdv;
+      if(!nudged&&idle>2000){ nudged=true; try{ v.playbackRate=1; const q=v.play(); if(q&&q.catch) q.catch(()=>{}); }catch(e){} sched(); }
+      else if(idle>4500){ finished=true; clearInterval(wd); v.removeEventListener('ended',onEnd); try{ v.pause(); v.playbackRate=1; }catch(e){} resolve({stalled:true,mt:Math.max(0,lastMt)}); }
+    },1000);
     const _fin=finish; finish=()=>{ clearInterval(wd); _fin(); };
+    ctl.onCancel=()=>{ if(finished) return; finished=true; clearInterval(wd); v.removeEventListener('ended',onEnd); try{ v.pause(); v.playbackRate=1; }catch(e){} resolve({stalled:false,mt:Math.max(0,lastMt)}); };
     sched();
     try{ v.playbackRate=1; v.muted=true; }catch(e){}
     const p=v.play(); if(p&&p.catch) p.catch(reject);
   });
+}
+async function seekFrames({v,ctl,upd,dur,from,step,onFrame}){
+  // Plays nothing: jumps to each output frame's time, waits for the frame, and hands it over. Slower but cannot stall on playback.
+  const seekTo=(t)=>new Promise(r=>{ const to=setTimeout(r,3000); const h=()=>{ clearTimeout(to); r(); }; v.addEventListener('seeked',h,{once:true}); try{ v.currentTime=Math.min(t,Math.max(0,dur-0.001)); }catch(e){ clearTimeout(to); r(); } });
+  for(let t=from;t<dur-0.001&&!ctl.cancel;t+=step){
+    await seekTo(t); await new Promise(r=>requestAnimationFrame(()=>r()));
+    await onFrame(t); upd(t);
+  }
 }
 async function encodeWithWebCodecs({v,W,H,enc,compose,out,ctl,upd,dur,spd=1}){
   let encErr=null;
@@ -4437,7 +4453,7 @@ async function encodeWithWebCodecs({v,W,H,enc,compose,out,ctl,upd,dur,spd=1}){
   const emit=async()=>{
     const fr=new VideoFrame(out,{timestamp:k*G,duration:G});
     venc.encode(fr,{keyFrame:k%60===0}); fr.close(); k++;
-    while(venc.encodeQueueSize>8 && !ctl.cancel){ await new Promise(r=>setTimeout(r,4)); }
+    { const tq=performance.now(); while(venc.encodeQueueSize>8 && !ctl.cancel && performance.now()-tq<4000){ await new Promise(r=>setTimeout(r,4)); } }
     if(encErr) throw encErr;
   };
   const push=async(mt)=>{
@@ -4447,7 +4463,8 @@ async function encodeWithWebCodecs({v,W,H,enc,compose,out,ctl,upd,dur,spd=1}){
   };
   try{
     await push(0);                                  // frame at t=0 (the video is parked there)
-    await pumpFrames({v,compose,ctl,upd,dur,onFrame:push});
+    const pr=await pumpFrames({v,compose,ctl,upd,dur,onFrame:push});
+    if(pr&&pr.stalled&&!ctl.cancel){ await seekFrames({v,ctl,upd,dur,from:Math.max(pr.mt,0),step:spd/FPS,onFrame:push}); }
     if(ctl.cancel){ try{ venc.close(); }catch(e){} return null; }
     while(k/FPS < dur/spd-0.5/FPS) await emit();       // hold the last frame up to the full duration
     await venc.flush(); if(encErr) throw encErr;

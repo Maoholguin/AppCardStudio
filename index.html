@@ -6341,6 +6341,76 @@ function initConnMenu(){
 initConnMenu();
 document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible'&&ghCfg()&&Date.now()-GHS.lastRun>30000) run('focus'); });
 if(ghCfg()){ GHS.state='idle'; setTimeout(()=>run('boot'),900); }
+/* ====================================================================
+   Standalone-only: Typefully connection test (API v2). Key stays in this browser only.
+   ==================================================================== */
+var TF_KEY='acs.tf', TF_API='https://api.typefully.com/v2';
+function tfCfg(){ try{ const j=JSON.parse(localStorage.getItem(TF_KEY)||'null'); return j&&j.key?j:null; }catch(e){ return null; } }
+function tfSet(c){ try{ if(c&&c.key) localStorage.setItem(TF_KEY,JSON.stringify(c)); else localStorage.removeItem(TF_KEY); }catch(e){} const b=$('tfBtn'); if(b) b.classList.toggle('on',!!tfCfg()); }
+async function tfCall(method,path,body,key){
+  const k=key||(tfCfg()||{}).key; let r;
+  try{ r=await fetch(TF_API+path,{method,headers:Object.assign({'Authorization':'Bearer '+k},body?{'Content-Type':'application/json'}:{}),body:body?JSON.stringify(body):undefined}); }
+  catch(e){ const x=new Error('cors'); x.cors=true; throw x; }
+  let j=null; try{ j=await r.json(); }catch(e){}
+  if(!r.ok){ const x=new Error('http'); x.status=r.status; x.body=j; throw x; }
+  return j;
+}
+function tfErr(e){ if(e.cors) return 'El navegador bloqueó la llamada (CORS) o no hay conexión. Hace falta un intermediario.'; if(e.status===401||e.status===403) return 'La clave no es válida o no tiene permisos ('+e.status+').'; if(e.status===429) return 'Demasiadas peticiones (429). Espera un momento.'; return 'Error '+(e.status||'')+' '+JSON.stringify(e.body||'').slice(0,200); }
+function openTfDialog(){
+  if($('tfDlg')) return; const cur=tfCfg()||{key:'',ss:null};
+  const ov=el('div','kdlg-ov'); ov.id='tfDlg'; ov.addEventListener('mousedown',e=>{ if(e.target===ov) close(); });
+  const box=el('div','kdlg'); box.setAttribute('role','dialog'); box.setAttribute('aria-modal','true'); box.setAttribute('aria-label','Typefully');
+  box.appendChild(el('h3',null,'Typefully (prueba)'));
+  box.appendChild(el('p',null,tr('Prueba de conexión: lee tus etiquetas y huecos libres y crea un borrador de prueba (sin programar ni publicar). La clave se guarda solo en este navegador y se envía únicamente a Typefully.')));
+  const l=el('label','gh-l',tr('Clave de API de Typefully')); const key=el('input'); key.type='password'; key.value=cur.key; key.autocomplete='off'; key.spellcheck=false; key.placeholder='Typefully → Settings → API'; l.appendChild(key); box.appendChild(l);
+  const msg=el('p','gh-msg'); msg.setAttribute('role','status'); box.appendChild(msg);
+  const out=el('pre'); out.style.cssText='margin:0;max-height:220px;overflow:auto;font-size:11.5px;background:var(--tint);border:1px solid var(--line);border-radius:8px;padding:8px;white-space:pre-wrap;word-break:break-all'; out.hidden=true; box.appendChild(out);
+  const btns=el('div','kbtns'); const go=el('button','btn primary',tr('Conectar y leer')); go.type='button'; const mk=el('button','btn',tr('Crear borrador de prueba')); mk.type='button'; mk.disabled=!cur.ss; const rm=el('button','btn',tr('Desconectar')); rm.type='button'; const cl=el('button','btn ghost',tr('Cerrar')); cl.type='button';
+  [go,mk,rm,cl].forEach(b=>btns.appendChild(b)); box.appendChild(btns);
+  const log=(s)=>{ out.hidden=false; out.textContent+=s+'\n'; out.scrollTop=1e6; };
+  function close(){ ov.remove(); document.removeEventListener('keydown',onKey); } function onKey(e){ if(e.key==='Escape') close(); }
+  go.addEventListener('click',async()=>{
+    const k=key.value.trim(); if(!k){ msg.textContent=tr('Falta la clave de acceso.'); return; }
+    go.disabled=true; out.textContent=''; msg.textContent=tr('Probando la conexión…');
+    try{
+      const ss=await tfCall('GET','/social-sets',null,k); const list=(ss&&ss.results)||[]; log('Cuentas (social sets): '+list.length);
+      if(!list.length){ msg.textContent='No hay cuentas.'; return; }
+      const s0=list[0]; const id=s0.id; tfSet({key:k,ss:id}); mk.disabled=false; log('Usando: '+(s0.name||s0.username||id)+' (id '+id+')');
+      let det=null; try{ det=await tfCall('GET','/social-sets/'+id+'/'); log('Plataformas: '+JSON.stringify(det.platforms||Object.keys(det)).slice(0,300)); }catch(e){ log('Detalle: '+tfErr(e)); }
+      try{ const t=await tfCall('GET','/social-sets/'+id+'/tags'); log('Etiquetas: '+((t.results||[]).map(x=>x.name||x.slug).join(', ')||'(ninguna)')); }catch(e){ log('Etiquetas: '+tfErr(e)); }
+      try{ const a=new Date(), b=new Date(Date.now()+7*864e5), f=d=>d.toISOString().slice(0,10); const q=await tfCall('GET','/social-sets/'+id+'/queue?start_date='+f(a)+'&end_date='+f(b)); log('Cola (7 días): '+JSON.stringify(q).slice(0,600)); }catch(e){ log('Cola: '+tfErr(e)); }
+      msg.textContent=tr('Conectado'); document.getElementById('tfBtn')&&tfSet({key:k,ss:id});
+    }catch(e){ msg.textContent=tr('No se pudo conectar')+': '+tfErr(e); }
+    finally{ go.disabled=false; }
+  });
+  mk.addEventListener('click',async()=>{
+    const c=tfCfg(); if(!c) return; mk.disabled=true; out.textContent=''; msg.textContent='Creando…';
+    try{
+      const text=(($('fPost')||{}).value||'').trim()||'Prueba de App Card Studio'; const reply=(($('fThread')||{}).value||'').trim();
+      let media=null;
+      try{
+        const blob=await renderBlob(); const up=await tfCall('POST','/social-sets/'+c.ss+'/media/upload',{file_name:'card.png'}); log('Subida: '+JSON.stringify(up).slice(0,200));
+        const put=await fetch(up.upload_url,{method:'PUT',body:blob}).catch(()=>{ throw Object.assign(new Error('cors'),{cors:true,step:'put'}); });
+        if(!put.ok) throw Object.assign(new Error('put'),{status:put.status});
+        for(let i=0;i<20;i++){ const m=await tfCall('GET','/social-sets/'+c.ss+'/media/'+up.media_id); if(m.status==='ready'||m.status==='processed'||m.status==='completed'||m.status==='done'){ log('Media lista'); break; } if(i===19) log('Media: estado '+m.status); await new Promise(r=>setTimeout(r,1000)); }
+        media=up.media_id;
+      }catch(e){ log('Imagen: '+(e.step==='put'?'la subida del archivo fue bloqueada (CORS del almacenamiento).':tfErr(e))+' — sigo sin imagen.'); }
+      const posts=[{text:'[PRUEBA] '+text}]; if(media) posts[0].media_ids=[media]; if(reply) posts.push({text:reply});
+      const plats={}; ['x','bluesky','threads','mastodon','linkedin'].forEach(p=>{ plats[p]={enabled:p==='bluesky'||p==='mastodon',posts:p==='mastodon'?[posts[0]]:posts}; });
+      const d=await tfCall('POST','/social-sets/'+c.ss+'/drafts',{draft_title:'App Card Studio test',platforms:plats});
+      log('Borrador creado: id '+(d.id||'?')+' · estado '+(d.status||'?')); msg.textContent='Listo: revisa el borrador en Typefully.';
+    }catch(e){ msg.textContent='Falló: '+tfErr(e); log(tfErr(e)); }
+    finally{ mk.disabled=false; }
+  });
+  rm.addEventListener('click',()=>{ tfSet(null); key.value=''; mk.disabled=true; msg.textContent=tr('Desconectado. Tus datos locales siguen aquí.'); });
+  cl.addEventListener('click',close); document.addEventListener('keydown',onKey);
+  ov.appendChild(box); document.body.appendChild(ov); (cur.key?go:key).focus();
+}
+window.openTfDialog=openTfDialog;
+(function(){ const menu=document.querySelector('.conn-menu'), gb=$('ghBtn'); if(!menu||!gb||$('tfBtn')) return;
+  const b=el('button','btn conn-item'); b.type='button'; b.id='tfBtn'; b.setAttribute('role','menuitem');
+  b.innerHTML=mkIcon('<path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4z"/>')+'<span>Typefully</span>'; b.addEventListener('click',()=>openTfDialog());
+  menu.insertBefore(b,$('keyBtn')); b.classList.toggle('on',!!tfCfg()); })();
 boot().then(function(){ if(window.hashImport) hashImport(); });
 })();
 

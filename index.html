@@ -6387,21 +6387,23 @@ function openTfDialog(){
     const c=tfCfg(); if(!c) return; mk.disabled=true; out.textContent=''; msg.textContent='Creando…';
     try{
       const text=(($('fPost')||{}).value||'').trim()||'Prueba de App Card Studio'; const reply=(($('fThread')||{}).value||'').trim();
-      let media=null;
-      try{
-        const blob=await renderBlob(); const up=await tfCall('POST','/social-sets/'+c.ss+'/media/upload',{file_name:'card.png'}); log('Subida: '+JSON.stringify(up).slice(0,200));
-        const put=await fetch(up.upload_url,{method:'PUT',body:await blob.arrayBuffer()}).catch(()=>{ throw Object.assign(new Error('cors'),{cors:true,step:'put'}); });
-        if(!put.ok) throw Object.assign(new Error('put'),{status:put.status});
-        for(let i=0;i<20;i++){ const m=await tfCall('GET','/social-sets/'+c.ss+'/media/'+up.media_id); if(m.status==='ready'||m.status==='processed'||m.status==='completed'||m.status==='done'){ log('Media lista'); break; } if(i===19) log('Media: estado '+m.status); await new Promise(r=>setTimeout(r,1000)); }
-        media=up.media_id;
-      }catch(e){ log('Imagen: '+(e.step==='put'?'la subida del archivo fue bloqueada (CORS del almacenamiento).':tfErr(e))+' — sigo sin imagen.'); }
-      const posts=[{text:'[PRUEBA] '+text}]; if(media) posts[0].media_ids=[media]; if(reply) posts.push({text:reply});
+      const posts=[{text:'[PRUEBA] '+text}]; if(reply) posts.push({text:reply});
       let conn=[]; try{ const det=await tfCall('GET','/social-sets/'+c.ss+'/'); conn=Object.keys(det.platforms||{}).filter(k=>det.platforms[k]); log('Redes conectadas: '+conn.join(', ')); }catch(e){ log('Detalle: '+tfErr(e)); }
-      const plats={}; ['x','bluesky','threads','mastodon','linkedin'].forEach(p=>{ if(conn.indexOf(p)<0) return; plats[p]={enabled:true,posts:(p==='mastodon'||p==='linkedin')?[posts[0]]:posts}; });
-      if(!Object.keys(plats).length){ throw Object.assign(new Error('x'),{status:0,body:'No encontré redes conectadas'}); }
-      const d=await tfCall('POST','/social-sets/'+c.ss+'/drafts',{draft_title:'App Card Studio test',platforms:plats});
-      log('Borrador creado: id '+(d.id||'?')+' · estado '+(d.status||'?')); msg.textContent='Listo: revisa el borrador en Typefully.';
-    }catch(e){ msg.textContent='Falló: '+tfErr(e); log(tfErr(e)); }
+      const plats={}; ['x','bluesky','threads','mastodon','linkedin'].forEach(p=>{ if(conn.indexOf(p)<0) return; plats[p]={posts:(p==='mastodon'||p==='linkedin')?[posts[0]]:posts}; });
+      if(!Object.keys(plats).length) throw Object.assign(new Error('x'),{status:0,body:'No encontré redes conectadas'});
+      let tag=null; try{ const tl=await tfCall('GET','/social-sets/'+c.ss+'/tags'); const t=(tl.results||[]).find(x=>String(x.name||'').toLowerCase()==='shared apps'); if(t) tag=t.slug||'shared-apps'; log('Etiqueta: '+(tag||'no encontré «Shared Apps»')); }catch(e){ log('Etiquetas: '+tfErr(e)); }
+      if(!ghCfg()){ log('Falta conectar GitHub (menú Conexiones) para subir la imagen.'); throw Object.assign(new Error('x'),{status:0,body:'Conecta GitHub primero'}); }
+      const job={id:'j'+Date.now().toString(36),ss:c.ss,title:'App Card Studio test',media:'card.png',tags:tag?[tag]:[],platforms:plats};
+      log('Subiendo la tarjeta al repositorio…'); const blob=await renderBlob();
+      await ghWrite('typefully/jobs/'+job.id+'/card.png',bufB64(await blob.arrayBuffer()),'Typefully: tarjeta');
+      await ghWriteJson('typefully/jobs/'+job.id+'/job.json',job,'Typefully: trabajo');
+      log('Enviado a GitHub. Esperando a que Typefully lo procese (20–60 s)…'); msg.textContent='Esperando…';
+      let res=null; for(let i=0;i<60&&!res;i++){ await new Promise(r=>setTimeout(r,4000)); res=await ghJson('/contents/typefully/results/'+job.id+'.json',true).then(m=>m&&m.content?JSON.parse(atob(m.content.replace(/\n/g,''))):null).catch(()=>null); }
+      if(!res){ log('No llegó el resultado a tiempo. Mira la pestaña Actions del repositorio.'); msg.textContent='Sin respuesta todavía'; return; }
+      try{ await ghDelete('typefully/results/'+job.id+'.json'); }catch(e){}
+      if(res.ok){ log('Borrador creado: id '+res.draft_id+' · estado '+res.status+' · imagen: '+(res.media?'sí':'no')); msg.textContent='Listo: revisa el borrador en Typefully.'; }
+      else { log('Falló: '+res.error); msg.textContent='Falló: '+res.error.slice(0,160); }
+    }catch(e){ const m=e.code?ghMsg(e):tfErr(e); msg.textContent='Falló: '+m; log(m); }
     finally{ mk.disabled=false; }
   });
   rm.addEventListener('click',()=>{ tfSet(null); key.value=''; mk.disabled=true; msg.textContent=tr('Desconectado. Tus datos locales siguen aquí.'); });

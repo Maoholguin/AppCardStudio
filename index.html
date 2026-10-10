@@ -393,6 +393,7 @@ input[type=range]{width:100%;accent-color:var(--brand)}
 .bl-ai .btn.bl-used{background:var(--ok-bg);color:var(--ok);border-color:color-mix(in srgb,var(--ok) 35%,var(--bg))}.bl-ai .btn.bl-used .bl-est{opacity:.85}
 .bl-est{font-weight:500;opacity:.7;margin-left:2px}.bl-cost{font-size:11.5px;color:var(--muted)}
 .bl-xb .bl-acts.full{align-self:stretch;flex-wrap:wrap;gap:6px;padding-top:2px}
+.bl-aisec{display:flex;flex-direction:column;gap:6px;align-items:flex-start;align-self:stretch;border-top:1px solid var(--line);padding-top:8px;margin-top:2px}
 .bl-xdel{align-self:flex-end;margin-top:-2px}
 .bl-xdel .bl-del.arm{gap:5px}
 .bl-row{flex-direction:column;flex-wrap:nowrap;align-items:stretch;gap:0;padding:6px 10px}
@@ -5732,7 +5733,7 @@ const BLI={alt:'<rect x="2.5" y="8.5" width="13" height="13" rx="3"/><path d="M6
 const BL_CHEV='<path d="m6 9 6 6 6-6"/>';
 function blChev(r,key,acts,line,X){
   const b=el('button','btn ghost sm bl-chev'); b.type='button'; b.innerHTML=archIcon(BL_CHEV);
-  const sync=()=>{ const o=BL.exp.has(key); r.classList.toggle('open',o); acts.classList.toggle('full',o); if(o) X.insertBefore(acts,X.querySelector('.bl-xdel')); else if(b.parentNode===line) line.insertBefore(acts,b); b.setAttribute('aria-expanded',String(o)); b.title=b.ariaLabel=tr(o?'Contraer':'Expandir'); };
+  const sync=()=>{ const o=BL.exp.has(key); r.classList.toggle('open',o); acts.classList.toggle('full',o); if(o) X.insertBefore(acts,X.querySelector('.bl-aisec')||X.querySelector('.bl-xdel')); else if(b.parentNode===line) line.insertBefore(acts,b); b.setAttribute('aria-expanded',String(o)); b.title=b.ariaLabel=tr(o?'Contraer':'Expandir'); };
   b.addEventListener('click',()=>{ if(BL.exp.has(key)) BL.exp.delete(key); else BL.exp.add(key); sync(); }); sync(); return b;
 }
 /* collapsed lines show icons only */
@@ -5773,7 +5774,7 @@ function blCard(it){
   r.addEventListener('dragend',()=>{ r.classList.remove('drag'); BL.drag=''; document.querySelectorAll('.bl-col.over').forEach(c=>c.classList.remove('over')); });
   const hd=el('div','bl-ch bl-line'); const m=el('div','bl-main'); m.appendChild(el('strong','',it.name));
   if(a.sug&&col==='check') m.appendChild(el('span','bl-badge',tr('Sugerida'))); hd.appendChild(m);
-  const X=el('div','bl-xb'); const host=blHost(it.url); if(host) X.appendChild(el('span','bl-host',host));
+  const X=el('div','bl-xb'); let AIS=null; const aiX=()=>AIS||(AIS=el('div','bl-aisec')); const host=blHost(it.url); if(host) X.appendChild(el('span','bl-host',host));
   if(it.description) X.appendChild(el('span','bl-desc',it.description));
   const acts=el('div','bl-acts'); let paste=null;
   const showPaste=()=>{ if(paste){ paste.remove(); paste=null; return; } paste=blPasteBox(it,()=>{ paste.remove(); paste=null; }); X.appendChild(paste); paste.querySelector('input').focus(); };
@@ -5789,7 +5790,7 @@ function blCard(it){
     if(it.url){ const w=el('a','btn sm'); w.href=it.url; w.target='_blank'; w.rel='noopener'; w.title=tr('Abrir el enlace original de la app'); w.innerHTML=archIcon(BLI.ext)+'<span>'+tr('Link')+'</span>'; acts.appendChild(w); }
     acts.appendChild(blBtn('',BLI.link,tr('Añadir página de AlternativeTo'),showPaste));
   } else {
-    if(!(a.s==='maybe'&&a.cand&&a.cand.length)){ X.appendChild(el('span','bl-note',tr('Aún sin comprobar en AlternativeTo.'))); if(a.ai) X.appendChild(el('span','bl-why',tr('La IA no encontró una página.')+(a.ai.why?' '+a.ai.why:''))); blAiLine(X,a,false); blAiButtons(X,it,false); }
+    if(!(a.s==='maybe'&&a.cand&&a.cand.length)){ X.appendChild(el('span','bl-note',tr('Aún sin comprobar en AlternativeTo.'))); if(a.ai) aiX().appendChild(el('span','bl-why',tr('La IA no encontró una página.')+(a.ai.why?' '+a.ai.why:''))); blAiLine(aiX(),a,false); blAiButtons(aiX(),it,false); }
     if(a.s==='maybe'&&a.cand&&a.cand.length){
       X.appendChild(el('span','bl-note',tr(a.sug?'La IA sugiere esta:':'¿Es alguna de estas?')));
       const order=a.cand.map((c,i)=>({c,i})); if(a.sug&&order[a.sug.i]){ const s0=order.splice(a.sug.i,1)[0]; order.unshift(s0); }
@@ -5797,8 +5798,8 @@ function blCard(it){
         if(isS){ const bd=el('span','bl-badge',tr('Sugerida')+(a.sug.p?' · '+Math.round(a.sug.p*100)+'%':'')); if(a.sug.deep) bd.title=tr('Con búsqueda en internet'); row.appendChild(bd); }
         const y=el('button','btn sm',tr('Sí')); y.type='button'; y.addEventListener('click',()=>blSet(it.key,{alt:Object.assign({s:'found',link:c.link,name:c.name||'',src:'manual',at:Date.now()},blKeep(a))})); row.appendChild(y); X.appendChild(row);
         if(isS&&a.sug.why) X.appendChild(el('span','bl-why',a.sug.why)); });
-      if(a.ai&&!a.sug) X.appendChild(el('span','bl-why',tr('La IA no encontró una clara.')+(a.ai.why?' '+a.ai.why:'')));
-      blAiLine(X,a,false); blAiButtons(X,it,true);
+      if(a.ai&&!a.sug) aiX().appendChild(el('span','bl-why',tr('La IA no encontró una clara.')+(a.ai.why?' '+a.ai.why:'')));
+      blAiLine(aiX(),a,false); blAiButtons(aiX(),it,true);
     }
     if(it.url){ const w=el('a','btn sm'); w.href=it.url; w.target='_blank'; w.rel='noopener'; w.title=tr('Abrir el enlace original de la app'); w.innerHTML=archIcon(BLI.ext)+'<span>'+tr('Link')+'</span>'; acts.appendChild(w); }
     const sr=el('a','btn sm'); sr.href='https://alternativeto.net/browse/search/?q='+encodeURIComponent(it.name)+'#acs-check='+encodeURIComponent(it.key); sr.target='_blank'; sr.rel='noopener'; sr.title=tr('Buscar en AlternativeTo y comprobar si es la misma app'); sr.innerHTML=archIcon(BLI.search)+'<span>'+tr('Buscar en AlternativeTo')+'</span>';
@@ -5806,7 +5807,7 @@ function blCard(it){
     acts.appendChild(blBtn('',BLI.link,tr('Añadir página de AlternativeTo'),showPaste));
   }
   blIcoTitles(acts); hd.appendChild(acts); hd.appendChild(blChev(r,it.key,acts,hd,X)); r.appendChild(hd);
-  const dl=el('div','bl-xdel'); dl.appendChild(blDelBtn(it)); X.appendChild(dl); r.appendChild(X); return r;
+  if(AIS) X.appendChild(AIS); const dl=el('div','bl-xdel'); dl.appendChild(blDelBtn(it)); X.appendChild(dl); r.appendChild(X); return r;
 }
 /* "Hacer card": hand the AlternativeTo page to the Studio importer */
 function blMakeCard(it){

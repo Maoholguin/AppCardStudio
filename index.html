@@ -7217,18 +7217,18 @@ async function tfsBsDid(h){ if(/^did:/.test(h)) return h; if(TFS.did[h]) return 
 async function tfsFetch(items,force,onStep){
   if(TFS.busy) return; TFS.busy=true;
   try{
-    const now=Date.now(), todo=items.filter(i=>(i.bs||i.ma)&&(force||!TFS.m[i.id]||now-(TFS.m[i.id].at||0)>TFS_TTL));
+    const now=Date.now(), todo=items.filter(i=>(i.bs||i.ma)&&(force||!TFS.m[i.id]||now-(TFS.m[i.id].at||0)>TFS_TTL||(!TFS.m[i.id].img&&(TFS.m[i.id].it||0)<2)));
     /* Bluesky: batches of 25 */
     const bs=[]; for(const i of todo){ const m=/bsky\.app\/profile\/([^/]+)\/post\/([^/?#]+)/.exec(i.bs||''); if(m){ const did=await tfsBsDid(m[1]); if(did) bs.push({i,uri:'at://'+did+'/app.bsky.feed.post/'+m[2]}); } }
     for(let k=0;k<bs.length;k+=25){ const part=bs.slice(k,k+25);
       try{ const r=await fetch('https://public.api.bsky.app/xrpc/app.bsky.feed.getPosts?'+part.map(p=>'uris='+encodeURIComponent(p.uri)).join('&')); const j=await r.json(); const by={}; (j.posts||[]).forEach(p=>{ by[p.uri]=p; });
-        part.forEach(p=>{ const x=by[p.uri]; const rec=TFS.m[p.i.id]=TFS.m[p.i.id]||{}; rec.at=now; if(x){ rec.bs={l:x.likeCount||0,r:x.repostCount||0,c:x.replyCount||0,q:x.quoteCount||0}; const e=x.embed||{}; const im=(e.images&&e.images[0]&&e.images[0].thumb)||(e.media&&e.media.images&&e.media.images[0]&&e.media.images[0].thumb)||(e.external&&e.external.thumb)||''; if(im) rec.img=im; } }); }catch(e){}
+        part.forEach(p=>{ const x=by[p.uri]; const rec=TFS.m[p.i.id]=TFS.m[p.i.id]||{}; rec.at=now; if(x){ rec.bs={l:x.likeCount||0,r:x.repostCount||0,c:x.replyCount||0,q:x.quoteCount||0}; const e=x.embed||{}; const em=e.media||{}; const im=(e.images&&e.images[0]&&(e.images[0].thumb||e.images[0].fullsize))||(em.images&&em.images[0]&&(em.images[0].thumb||em.images[0].fullsize))||e.thumbnail||em.thumbnail||(e.external&&e.external.thumb)||(em.external&&em.external.thumb)||''; if(im) rec.img=im; } }); }catch(e){}
       if(onStep) onStep(); }
     /* Mastodon: one call per post, a few at a time */
     const ma=todo.map(i=>{ const m=/^https?:\/\/([^/]+)\/(?:@[^/]+|users\/[^/]+\/statuses)\/(\d+)/.exec(i.ma||''); return m?{i,host:m[1],id:m[2]}:null; }).filter(Boolean); let q=0;
-    const work=async()=>{ while(q<ma.length){ const p=ma[q++]; try{ const r=await fetch('https://'+p.host+'/api/v1/statuses/'+p.id); if(r.ok){ const x=await r.json(); const rec=TFS.m[p.i.id]=TFS.m[p.i.id]||{}; rec.at=now; rec.ma={l:x.favourites_count||0,r:x.reblogs_count||0,c:x.replies_count||0}; const ma0=(x.media_attachments||[])[0]; if(ma0&&(ma0.preview_url||ma0.url)&&!rec.img) rec.img=ma0.preview_url||ma0.url; } }catch(e){} if(onStep&&q%4===0) onStep(); } };
+    const work=async()=>{ while(q<ma.length){ const p=ma[q++]; try{ const r=await fetch('https://'+p.host+'/api/v1/statuses/'+p.id); if(r.ok){ const x=await r.json(); const rec=TFS.m[p.i.id]=TFS.m[p.i.id]||{}; rec.at=now; rec.ma={l:x.favourites_count||0,r:x.reblogs_count||0,c:x.replies_count||0}; const ma0=(x.media_attachments||[])[0]; if(!rec.img){ const mi=ma0&&(ma0.preview_url||ma0.url)||(x.card&&x.card.image)||''; if(mi) rec.img=mi; } } }catch(e){} if(onStep&&q%4===0) onStep(); } };
     await Promise.all([work(),work(),work(),work()]);
-    todo.forEach(i=>{ const r=TFS.m[i.id]=TFS.m[i.id]||{}; r.at=now; });
+    todo.forEach(i=>{ const r=TFS.m[i.id]=TFS.m[i.id]||{}; r.at=now; if(!r.img) r.it=(r.it||0)+1; });
     tfsSave();
   }finally{ TFS.busy=false; }
 }

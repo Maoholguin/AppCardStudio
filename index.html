@@ -474,7 +474,7 @@ i.pub,.tfc-ft.pub i{background:var(--ok)}i.sch,.tfc-ft.sch i{background:var(--br
 .tfc-chip.pub,.tfc-chip.sch{background:var(--tint);border-color:color-mix(in srgb,var(--tint-fg) 22%,var(--bg))}
 a.tfc-chip:hover{border-color:var(--brand)}
 .tfc-chip.tgc{background:color-mix(in srgb,var(--tg) 17%,var(--bg));border-color:color-mix(in srgb,var(--tg) 38%,var(--bg))}
-.tfc-chip .tfm-tg{margin-top:3px;max-width:100%}
+.tfc-chip{height:62px;overflow:hidden}.tfc-chip .tfm-tg,.tfc-chip .tfm-tg.tg{margin-top:1px;padding:0;border:0;background:none;border-radius:0;max-width:100%;font-size:11px;font-weight:600;color:color-mix(in srgb,var(--tg,var(--tint-fg)) 70%,var(--fg))}
 .tfc-chip.free{color:var(--muted)}.tfc-chip.free b{color:var(--fg)}
 .tfc-ft s{display:inline-flex;text-decoration:none;color:var(--muted)}.tfc-ft.pub s{color:var(--ok)}
 .tfc-ft i{width:9px;height:9px;border-radius:50%;border:1.5px solid var(--muted);box-sizing:border-box}
@@ -3549,7 +3549,10 @@ function setSlot(slot,obj){
   if(exporting){ toast('Espera a que termine la exportación del video.'); return; }
   const old=S[slot];
   if(old&&old.kind==='video'&&old!==obj){ try{ old.img.pause(); }catch(e){} }
-  S[slot]=obj; S.xf[slot]=newXf();
+  /* remember the outgoing image's edits, restore the incoming one's (if it had any) */
+  if(old&&old!==obj){ old._xf={...S.xf[slot]}; if(slot==='thumb') old._r=S.thumbR; }
+  S[slot]=obj; S.xf[slot]=(obj&&obj._xf&&obj!==old)?{...obj._xf}:newXf();
+  if(slot==='thumb'&&obj&&obj!==old&&obj._r!=null) S.thumbR=obj._r;
   paintDz(slot); paintXf(slot); paintGallery(); autoBg(); syncVideoPlayback(); scheduleRender();
 }
 function clearSlot(slot){ setSlot(slot,null); if(S.sel===slot) S.sel=null; }

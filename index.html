@@ -637,6 +637,8 @@ a.tfc-chip:hover{border-color:var(--brand)}
 <style>.bl-pk{flex:none;width:18px;height:18px;margin-top:2px;border-radius:5px;border:1.5px solid var(--line-2);background:var(--bg);display:grid;place-items:center;color:transparent;cursor:pointer;padding:0}.bl-pk.on{background:var(--brand);border-color:var(--brand);color:#fff}.bl-card.picked{outline:2px solid var(--brand);outline-offset:-1px}
 .bl-tools .btn.busy,.bl-tools .btn:disabled{opacity:.6;cursor:progress}.bl-tools .btn.res{background:var(--tint);color:var(--tint-fg)}.bl-tools .bl-sel[aria-pressed="true"]{background:var(--tint);color:var(--tint-fg)}.bl-selnote{font-weight:600}</style>
 <style>.bl .arch-tools{max-width:1240px;width:100%;justify-content:space-between}.bl .bl-tools{margin-left:auto;justify-content:flex-end}@media (min-width:1000px){.bl .arch-tools{flex-wrap:nowrap}}</style>
+
+<style>.tfm .kbtns{align-items:center}.tfm .kbtns .tfm-prog{flex:1 1 180px;max-width:360px;margin-right:auto;gap:4px;min-width:0}.tfm .kbtns .tfm-prog[hidden]{display:none}.tfm .kbtns .tfm-ptxt{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}</style>
 </head><body><div class="app">
   <header class="top">
     <div class="logo" aria-hidden="true"></div>
@@ -6944,9 +6946,9 @@ async function openTfModal(rec){
   const vw=el('div','tfm-vw'); const v1=el('button','tfm-vb on',tr('Todos los días')), v2=el('button','tfm-vb',tr('Un día')); v1.type=v2.type='button'; vw.append(v1,v2); sch.appendChild(vw);
   const dayBar=el('div','tfm-days'); dayBar.hidden=true; sch.appendChild(dayBar);
   const slotBox=el('div','tfm-slots'); slotBox.appendChild(el('p','dim',tr('Cargando huecos…'))); sch.appendChild(slotBox); const sum=el('p','tfm-sum'); sch.appendChild(sum); box.appendChild(sch);
-  const prog=el('div','tfm-prog'); prog.hidden=true; const pbar=el('div','tfm-pbar'); const pfill=el('i'); pbar.appendChild(pfill); const ptxt=el('span','tfm-ptxt'); prog.append(pbar,ptxt); box.appendChild(prog);
+  const prog=el('div','tfm-prog'); prog.hidden=true; const pbar=el('div','tfm-pbar'); const pfill=el('i'); pbar.appendChild(pfill); const ptxt=el('span','tfm-ptxt'); prog.append(ptxt,pbar);
   const msg=el('p','gh-msg'); msg.setAttribute('role','status'); box.appendChild(msg);
-  const btns=el('div','kbtns'); const send=el('button','btn primary',tr('Programar en Typefully')); send.type='button'; const cl=el('button','btn ghost',tr('Cancelar')); cl.type='button'; btns.append(cl,send); box.appendChild(btns);
+  const btns=el('div','kbtns'); const send=el('button','btn primary',tr('Programar en Typefully')); send.type='button'; const cl=el('button','btn ghost',tr('Cancelar')); cl.type='button'; btns.append(prog,cl,send); box.appendChild(btns);
   function close(){ ov.remove(); document.removeEventListener('keydown',onKey); [state.thumb,state.icon].forEach(u=>{ if(u) try{ URL.revokeObjectURL(u); }catch(e){} }); } function onKey(e){ if(e.key==='Escape'&&!state.busy) close(); }
   const picked=()=>cards.filter(cd=>cd._cb.checked);
   state.upd=()=>{ const n=picked().length;

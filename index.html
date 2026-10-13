@@ -455,8 +455,8 @@ i.pub,.tfc-ft.pub i{background:var(--ok)}i.sch,.tfc-ft.sch i{background:var(--br
 .tf-logo{display:block;border-radius:22%;flex:none;object-fit:cover}
 .btn .tf-logo{width:18px;height:18px;min-width:18px}.tfc-go{display:inline-flex;align-items:center;justify-content:center}.tfc-go .tf-logo{width:20px;height:20px;min-width:20px}.pc-tf .tf-logo,.pc-tfb .tf-logo{min-width:16px}
 .tfm-tg.tg{background:color-mix(in srgb,var(--tg,#80858d) 24%,var(--bg));color:color-mix(in srgb,var(--tg,#80858d) 62%,var(--fg));border:1px solid color-mix(in srgb,var(--tg,#80858d) 50%,var(--bg))}
-.tfc-row.tgc{background:color-mix(in srgb,var(--tg) 13%,var(--bg));border-color:color-mix(in srgb,var(--tg) 42%,var(--bg));border-left:4px solid var(--tg)}
-.tfm-chip.busy.tgc{background:color-mix(in srgb,var(--tg) 16%,var(--bg));border-color:color-mix(in srgb,var(--tg) 50%,var(--bg));border-left:4px solid var(--tg);opacity:1}
+.tfc-row.tgc{background:color-mix(in srgb,var(--tg) 13%,var(--bg));border-color:color-mix(in srgb,var(--tg) 42%,var(--bg))}
+.tfm-chip.busy.tgc{background:color-mix(in srgb,var(--tg) 16%,var(--bg));border-color:color-mix(in srgb,var(--tg) 50%,var(--bg));opacity:1}
 .tfm-chip.busy.tgc:disabled{color:var(--fg)}.tfm-tgs{display:flex;gap:4px;flex-wrap:wrap;margin-top:2px}.tfm-tgs .tfm-tg{margin-top:0}
 .pc-tf{background:var(--bg)}.pc-tf .tf-logo,.pc-tfb .tf-logo{width:18px;height:18px}.pc-tfb .tf-logo{width:16px;height:16px}
 .pc-tf.tf-off .tf-logo,.pc-tfb.tf-off .tf-logo{filter:grayscale(1);opacity:.55}.pc-tf.tf-unk .tf-logo{filter:grayscale(.7);opacity:.8}
@@ -465,6 +465,21 @@ i.pub,.tfc-ft.pub i{background:var(--ok)}i.sch,.tfc-ft.sch i{background:var(--br
 .tfn-edit textarea{width:100%;box-sizing:border-box;font:inherit;font-size:13px;line-height:1.4;padding:6px 8px;border:1px solid var(--line-2);border-radius:8px;background:var(--bg);color:var(--fg);resize:vertical}
 .tfn-edit textarea:focus{outline:2px solid var(--brand);outline-offset:1px}.tfn-ec{align-self:flex-end;font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}.tfn-ec.bad{color:var(--danger);font-weight:600}
 .tfn-eb{display:flex;gap:6px}
+
+/* Typefully calendar: compact tiles, same family as the scheduling chips */
+.tfc-chips{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start}
+.tfc-chip{display:flex;flex-direction:column;align-items:flex-start;gap:1px;width:128px;box-sizing:border-box;border:1px solid var(--line-2);background:var(--bg);color:var(--fg);border-radius:8px;padding:5px 9px 6px;text-decoration:none;font:inherit;text-align:left}
+.tfc-chip b{font-size:13.5px;font-weight:600}.tfc-chip i{font-style:normal;font-size:11px;color:var(--muted)}
+.tfc-t1{display:flex;align-items:center;gap:5px}.tfc-si{display:inline-flex;color:var(--muted)}.tfc-si.pub{color:var(--ok)}
+.tfc-chip.pub,.tfc-chip.sch{background:var(--tint);border-color:color-mix(in srgb,var(--tint-fg) 22%,var(--bg))}
+a.tfc-chip:hover{border-color:var(--brand)}
+.tfc-chip.tgc{background:color-mix(in srgb,var(--tg) 17%,var(--bg));border-color:color-mix(in srgb,var(--tg) 38%,var(--bg))}
+.tfc-chip .tfm-tg{margin-top:3px;max-width:100%}
+.tfc-chip.free{color:var(--muted)}.tfc-chip.free b{color:var(--fg)}
+.tfc-ft s{display:inline-flex;text-decoration:none;color:var(--muted)}.tfc-ft.pub s{color:var(--ok)}
+.tfc-ft i{width:9px;height:9px;border-radius:50%;border:1.5px solid var(--muted);box-sizing:border-box}
+.tfc-cal{grid-template-columns:minmax(260px,300px) 1fr}
+.tfc-c.has .tfc-n{font-weight:700}
 .bl-tabs{display:none}
 .bl-ghost{position:fixed;z-index:200;pointer-events:none;opacity:.92;box-shadow:0 10px 30px rgba(0,40,70,.3);transform:rotate(-1.5deg);background:var(--bg);border:1px solid var(--brand);border-radius:var(--radius-card)}
 .bl-dock{position:fixed;left:0;right:0;bottom:0;z-index:190;display:flex;gap:8px;padding:10px 12px calc(10px + env(safe-area-inset-bottom,0px));background:color-mix(in srgb,var(--bg) 92%,transparent);border-top:1px solid var(--line-2);box-shadow:0 -6px 20px rgba(0,40,70,.15)}
@@ -6848,6 +6863,8 @@ async function openTfModal(rec){
    Uses the same API key as the scheduling modal. Read-only: it never creates or changes anything.
    ==================================================================== */
 const TFC_DOT={pub:'pub',sch:'sch',free:'free'};
+const ICO_CK='<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>';
+const ICO_CL='<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
 function tfUrl(id,ss){ return 'https://typefully.com/?d='+encodeURIComponent(id)+'&a='+encodeURIComponent(ss); }
 function tfLoc(){ return LANG==='es'?'es':LANG; }
 function tfDayKey(ms){ const d=new Date(ms), p=n=>String(n).padStart(2,'0'); return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate()); }
@@ -6879,7 +6896,7 @@ function openTfCal(){
   const op=el('a','btn sm ghost'); op.href='https://typefully.com/'; op.target='_blank'; op.rel='noopener noreferrer'; op.innerHTML=tfLogoHtml(16)+'<span>'+tr('Abrir Typefully')+'</span>';
   const x=el('button','btn sm ghost tfc-x'); x.type='button'; x.setAttribute('aria-label',tr('Cerrar')); x.innerHTML=archIcon('<path d="M6 6l12 12M18 6 6 18"/>'); hb.append(rf,op,x); hd.appendChild(hb); box.appendChild(hd);
   const bar=el('div','tfc-bar'); const vw=el('div','tfm-vw'); const VW=[['cal','Calendario'],['day','Un día'],['all','Todos los días']]; const vb=VW.map(([k,l])=>{ const b=el('button','tfm-vb',tr(l)); b.type='button'; b.addEventListener('click',()=>{ st.view=k; try{ localStorage.setItem('acs.tfcView',k); }catch(e){} paint(); }); vw.appendChild(b); return b; });
-  const fl=el('div','tfc-fl'); const FL=[['pub','Publicadas'],['sch','Programadas'],['free','Libres']]; const fb=FL.map(([k,l])=>{ const b=el('button','tfc-ft '+k); b.type='button'; b.innerHTML='<i></i><span>'+tr(l)+'</span>'; b.addEventListener('click',()=>{ st.filter[k]=!st.filter[k]; paint(); }); fl.appendChild(b); return b; });
+  const fl=el('div','tfc-fl'); const FL=[['pub','Publicadas'],['sch','Programadas'],['free','Libres']]; const fb=FL.map(([k,l])=>{ const b=el('button','tfc-ft '+k); b.type='button'; b.innerHTML=(k==='pub'?'<s>'+ICO_CK.replace('12','13').replace('12','13')+'</s>':k==='sch'?'<s>'+ICO_CL.replace('12','13').replace('12','13')+'</s>':'<i></i>')+'<span>'+tr(l)+'</span>'; b.addEventListener('click',()=>{ st.filter[k]=!st.filter[k]; paint(); }); fl.appendChild(b); return b; });
   bar.append(vw,fl); box.appendChild(bar);
   const main=el('div','tfc-main'); box.appendChild(main);
   function close(){ ov.remove(); document.removeEventListener('keydown',onKey); } function onKey(e){ if(e.key==='Escape') close(); }
@@ -6909,18 +6926,16 @@ function openTfCal(){
   const all=()=>[...st.items.values()].filter(i=>st.filter[i.kind]).sort((p,q)=>p.ms-q.ms);
   const byDay=()=>{ const m=new Map(); all().forEach(i=>{ const k=tfDayKey(i.ms); if(!m.has(k)) m.set(k,[]); m.get(k).push(i); }); return m; };
   const tagName=t=>st.tagMap[t]||t;
-  function row(i){
-    const r=el('div','tfc-row '+i.kind+(i.kind!=='free'&&i.ms<Date.now()&&i.kind==='sch'?' late':'')); const c0=i.tags&&i.tags[0]?tfTagColor(i.tags[0]):''; if(c0){ r.classList.add('tgc'); r.style.setProperty('--tg',c0); }
-    const tm=el('div','tfc-tm'); tm.appendChild(el('b',null,tfFmtLocal(i.ms))); tm.appendChild(el('i',null,tfFmtTime(i.ms,st.tz)+' '+tfTzName(st.tz))); r.appendChild(tm);
-    const m=el('div','tfc-rm'); const top=el('div','tfc-rt'); top.appendChild(el('span','tfc-st '+i.kind,tr(i.kind==='pub'?'Publicada':i.kind==='sch'?'Programada':'Hueco libre')));
-    if(i.title) top.appendChild(el('strong',null,i.title)); (i.tags||[]).slice(0,3).forEach(t=>top.appendChild(tfTagPill(t,tagName(t)))); m.appendChild(top);
-    if(i.text&&i.text!==i.title) m.appendChild(el('span','tfc-tx',i.text));
-    if(i.nets&&i.nets.length){ const n=el('span','tfc-nets'); i.nets.forEach(k=>{ if(MODE_ICON[k]){ const s=el('span'); s.title=k; s.innerHTML='<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" aria-hidden="true">'+MODE_ICON[k]+'</svg>'; n.appendChild(s); } }); m.appendChild(n); }
-    r.appendChild(m);
-    if(i.url){ const a=el('a','btn ghost sm tfc-go'); a.href=i.url; a.target='_blank'; a.rel='noopener noreferrer'; a.title=tr('Abrir en Typefully'); a.setAttribute('aria-label',tr('Abrir en Typefully')); a.innerHTML=tfLogoHtml(18); r.appendChild(a); }
-    return r;
+  function chip(i){
+    const busy=i.kind!=='free'; const c=el(busy&&i.url?'a':'div','tfc-chip '+i.kind);
+    if(busy&&i.url){ c.href=i.url; c.target='_blank'; c.rel='noopener noreferrer'; }
+    const t1=el('span','tfc-t1'); t1.appendChild(el('b',null,tfFmtLocal(i.ms))); if(busy){ const s=el('span','tfc-si '+i.kind); s.innerHTML=i.kind==='pub'?ICO_CK:ICO_CL; t1.appendChild(s); } c.appendChild(t1);
+    c.appendChild(el('i',null,tfFmtTime(i.ms,st.tz)+' '+tfTzName(st.tz)));
+    const tg=(i.tags||[])[0]; if(busy&&tg){ c.appendChild(tfTagPill(tg,tagName(tg))); const c0=tfTagColor(tg); if(c0){ c.classList.add('tgc'); c.style.setProperty('--tg',c0); } }
+    c.title=busy?tr(i.kind==='pub'?'Publicada':'Programada')+(i.title?' · '+i.title:'')+(i.text?'\n'+i.text:'')+'\n'+tr('Abrir en Typefully'):tfFmtDay(i.ms,undefined,true)+' · '+tr('Hueco libre');
+    return c;
   }
-  function dayList(k,items){ const w=el('div','tfc-list'); if(!items||!items.length) w.appendChild(el('p','dim tfc-empty',tr('Nada este día con los filtros actuales.'))); else items.forEach(i=>w.appendChild(row(i))); return w; }
+  function dayList(k,items){ const w=el('div','tfc-chips'); if(!items||!items.length) w.appendChild(el('p','dim tfc-empty',tr('Nada este día con los filtros actuales.'))); else items.forEach(i=>w.appendChild(chip(i))); return w; }
   function counts(items){ const c={pub:0,sch:0,free:0}; (items||[]).forEach(i=>c[i.kind]++); return c; }
   function dayHead(k,items){ const h=el('div','tfc-dh'); h.appendChild(el('b',null,tfDayLong(k)+(k===today?' · '+tr('Hoy'):''))); const c=counts(items); const s=[]; if(c.pub) s.push(trn(c.pub,'{n} publicada','{n} publicadas')); if(c.sch) s.push(trn(c.sch,'{n} programada','{n} programadas')); if(c.free) s.push(trn(c.free,'{n} hueco libre','{n} huecos libres')); h.appendChild(el('span','dim',s.join(' · ')||tr('Sin movimiento'))); return h; }
   /* ---------- views ---------- */
@@ -6935,11 +6950,9 @@ function openTfCal(){
     const first=new Date(Y,M-1,1), lead=(first.getDay()+6)%7, dim=new Date(Y,M,0).getDate();
     for(let i=0;i<lead;i++) g.appendChild(el('span','tfc-c off'));
     for(let d=1;d<=dim;d++){ const k=Y+'-'+String(M).padStart(2,'0')+'-'+String(d).padStart(2,'0'); const b=el('button','tfc-c'+(k===today?' today':'')+(k===st.sel?' on':'')); b.type='button'; b.appendChild(el('span','tfc-n',String(d)));
-      const c=counts(map.get(k)); const dots=el('span','tfc-ds'); ['pub','sch','free'].forEach(t=>{ if(c[t]){ const s=el('i',t); dots.appendChild(s); } }); b.appendChild(dots);
-      const tip=[]; if(c.pub) tip.push(c.pub+' '+tr('publicadas')); if(c.sch) tip.push(c.sch+' '+tr('programadas')); if(c.free) tip.push(c.free+' '+tr('libres')); b.title=tfDayLong(k)+(tip.length?' · '+tip.join(', '):'');
+      const c=counts(map.get(k)); if(c.pub+c.sch) b.classList.add('has'); b.title=tfDayLong(k);
       b.addEventListener('click',()=>{ st.sel=k; paint(); }); g.appendChild(b); }
     left.appendChild(g);
-    const lg=el('div','tfc-lg'); [['pub','Publicada'],['sch','Programada'],['free','Hueco libre']].forEach(([k,l])=>{ const s=el('span'); s.innerHTML='<i class="'+k+'"></i>'+tr(l); lg.appendChild(s); }); left.appendChild(lg);
     const right=el('div','tfc-day'); right.appendChild(dayHead(st.sel,map.get(st.sel))); right.appendChild(dayList(st.sel,map.get(st.sel)));
     wrap.append(left,right); return wrap;
   }

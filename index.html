@@ -628,6 +628,10 @@ a.tfc-chip:hover{border-color:var(--brand)}
 </style>
 
 <style>.pc-stats:empty{display:none}.pc-stats .acs-st{padding:2px 0}.acs-pts{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;align-self:center}</style>
+
+<style>.pc-stats{display:inline-flex;align-items:center;gap:12px;margin-left:auto;font-size:12.5px}.pc-stats:empty{display:none}.pc-nets .pc-stats{padding-right:2px}
+.acs-n{display:inline-flex;align-items:center;gap:5px;color:var(--muted)}.acs-n b{color:var(--fg);font-weight:600;font-variant-numeric:tabular-nums}.acs-n.bs svg{color:#1185fe}.acs-n.ma svg{color:#6364ff}.acs-n::after{content:"♥";font-size:11px;color:var(--muted);order:3}
+.acs-pts{color:var(--muted);font-variant-numeric:tabular-nums}.pc-hst{flex:none}.arch-grid.list .pc-hst{margin-left:auto}.arch-grid.list .pc-hst+.pc-tags{margin-left:0}@media (max-width:640px){.pc-hst{display:none}}</style>
 </head><body><div class="app">
   <header class="top">
     <div class="logo" aria-hidden="true"></div>
@@ -5654,7 +5658,7 @@ function archCard(rec,open){
   const tags=el('span','pc-tags'); [isVid?tr('Video'):tr('Imagen')].forEach(t=>tags.appendChild(el('span','pc-tag',t)));
   const chev=el('span','pc-chev'); chev.innerHTML='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
   if(ARCH.selMode){ const ck=el('span','pc-ck'+(ARCH.sel.has(rec.id)?' on':'')); ck.setAttribute('role','checkbox'); ck.setAttribute('aria-checked',String(ARCH.sel.has(rec.id))); ck.innerHTML='<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg>'; head.appendChild(ck); c.classList.toggle('picked',ARCH.sel.has(rec.id)); }
-  head.appendChild(ic); head.appendChild(l); if(ARCH.view==='list') head.appendChild(tags); const tfi=window.acsTfIcon&&window.acsTfIcon(rec); if(tfi) head.appendChild(tfi); if(rec.pageUrl){ const al=el('span','pc-alt'); al.setAttribute('role','link'); al.tabIndex=0; al.title=tr('Página de la app en AlternativeTo'); al.setAttribute('aria-label',al.title); al.innerHTML='<img class="alt-logo" alt="" src="'+DEFAULT_ICON+'">'; const go=e=>{ e.stopPropagation(); e.preventDefault(); window.open(rec.pageUrl,'_blank','noopener'); }; al.addEventListener('click',go); al.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' ') go(e); }); head.appendChild(al); } head.appendChild(chev); c.appendChild(head);
+  head.appendChild(ic); head.appendChild(l); if(ARCH.view==='list'){ const hs=el('span','pc-stats pc-hst'); if(window.acsArchStats&&rec.tf) window.acsArchStats(rec,hs,true); head.appendChild(hs); head.appendChild(tags); } const tfi=window.acsTfIcon&&window.acsTfIcon(rec); if(tfi) head.appendChild(tfi); if(rec.pageUrl){ const al=el('span','pc-alt'); al.setAttribute('role','link'); al.tabIndex=0; al.title=tr('Página de la app en AlternativeTo'); al.setAttribute('aria-label',al.title); al.innerHTML='<img class="alt-logo" alt="" src="'+DEFAULT_ICON+'">'; const go=e=>{ e.stopPropagation(); e.preventDefault(); window.open(rec.pageUrl,'_blank','noopener'); }; al.addEventListener('click',go); al.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' ') go(e); }); head.appendChild(al); } head.appendChild(chev); c.appendChild(head);
   head.addEventListener('click',()=>{ if(ARCH.selMode){ if(ARCH.sel.has(rec.id)) ARCH.sel.delete(rec.id); else ARCH.sel.add(rec.id); archRender(); return; } ARCH.openId=(ARCH.openId===rec.id?null:rec.id); archRender(); const o=document.querySelector('#archOv .pc.open'); if(o) o.scrollIntoView({block:'nearest',behavior:'smooth'}); });
   if(!open) return c;
   const txt=el('div','pc-txt'), body=el('div','pc-body'), nets=el('div','pc-nets');
@@ -5685,8 +5689,8 @@ function archCard(rec,open){
   const tfb=window.acsTfIcon&&window.acsTfIcon(rec,true); if(tfb) acts.appendChild(tfb);
   acts.appendChild(del);
   if(window.acsArchRepost&&rec.tf&&rec.tf.draft!=null&&rec.state){ const rp=el('button','btn sm'); rp.type='button'; rp.innerHTML=archIcon('<path d="m17 2 4 4-4 4"/><path d="M3 11V9a3 3 0 0 1 3-3h15"/><path d="m7 22-4-4 4-4"/><path d="M21 13v2a3 3 0 0 1-3 3H3"/>')+'<span>Repost</span>'; rp.addEventListener('click',()=>window.acsArchRepost(rec)); acts.insertBefore(rp,del); }
-  const stw=el('div','pc-stats'); if(window.acsArchStats&&rec.tf) window.acsArchStats(rec,stw);
-  const wrap=el('div','pc-open'); wrap.appendChild(body); wrap.appendChild(nets); wrap.appendChild(txt); wrap.appendChild(stw); wrap.appendChild(acts); c.appendChild(wrap); paint(); return c;
+  const stw=el('span','pc-stats'); if(window.acsArchStats&&rec.tf) window.acsArchStats(rec,stw); nets.appendChild(stw);
+  const wrap=el('div','pc-open'); wrap.appendChild(body); wrap.appendChild(nets); wrap.appendChild(txt); wrap.appendChild(acts); c.appendChild(wrap); paint(); return c;
 }
 function archRender(){
   const ov=$('archOv'); if(!ov) return; const grid=ov.querySelector('.arch-grid'); ARCH.urls.forEach(u=>URL.revokeObjectURL(u)); ARCH.urls=[]; grid.textContent='';
@@ -7360,14 +7364,13 @@ function tfStatsPanel(ss,st,close,repaintCal){
 window.tfsWarm=function(drafts,ss,cb){ const items=drafts.map(d=>tfsPub(d,ss)).filter(Boolean); tfsFetch(items,false).then(cb,()=>{}); };
 
 /* Archive card: compact stats + Repost */
-window.acsArchStats=function(rec,host){
+window.acsArchStats=function(rec,host,cacheOnly){
   const c=tfCfg(); if(!c||!c.ss||!rec.tf||rec.tf.draft==null) return; const id=String(rec.tf.draft);
-  const NI=n=>'<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true">'+MODE_ICON[n]+'</svg>';
-  const paint=()=>{ const m=TFS.m[id]; host.textContent=''; if(!tfsHas(m)) return; const w=el('div','tfs-nums acs-st');
-    [['bs','bluesky'],['ma','mastodon']].forEach(([k,net])=>{ const x=m[k]; if(!x) return; const b=el('span','tfs-nb2 '+k); b.title=net==='bluesky'?'Bluesky':'Mastodon';
-      b.innerHTML='<i class="tfs-ni">'+NI(net)+'</i><span><b>'+x.l+'</b> ♥</span><span><b>'+((x.r||0)+(x.q||0))+'</b> ↻</span><span><b>'+(x.c||0)+'</b> 💬</span>'; w.appendChild(b); });
-    const s=tfsScore(m,'all'); if(s>=0) w.appendChild(el('span','acs-pts','★ '+s)); host.appendChild(w); };
-  paint(); if(tfsHas(TFS.m[id])&&Date.now()-(TFS.m[id].at||0)<TFS_TTL) return;
+  const NI=n=>'<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" aria-hidden="true">'+MODE_ICON[n]+'</svg>';
+  const paint=()=>{ const m=TFS.m[id]; host.textContent=''; if(!tfsHas(m)) return;
+    [['bs','bluesky','Bluesky'],['ma','mastodon','Mastodon']].forEach(([k,net,nm])=>{ const x=m[k]; if(!x) return; const b=el('span','acs-n '+k); b.title=nm+' · '+x.l+' ♥ · '+((x.r||0)+(x.q||0))+' ↻ · '+(x.c||0)+' 💬'; b.innerHTML=NI(net)+'<b>'+x.l+'</b>'; host.appendChild(b); });
+    const s=tfsScore(m,'all'); if(s>=0){ const p=el('span','acs-pts','★ '+s); p.title=tr('Puntaje: ♥ + 2×(↻ + citas) + 2×💬'); host.appendChild(p); } };
+  paint(); if(cacheOnly||(tfsHas(TFS.m[id])&&Date.now()-(TFS.m[id].at||0)<TFS_TTL)) return;
   (async()=>{ try{ const d=await tfCall('GET','/social-sets/'+c.ss+'/drafts/'+id); if(d.status!=='published') return; const it=tfsPub(d,c.ss); if(!it) return; await tfsFetch([it],false); paint(); }catch(e){} })();
 };
 window.acsArchRepost=async function(rec){

@@ -765,6 +765,7 @@ a.tfc-chip:hover{border-color:var(--brand)}
 .arch-grid.list .pc-hist{grid-area:hist;margin:6px 16px 14px;padding-top:12px;align-self:start}
 @media (max-width:640px){.arch-grid.list .pc-open{grid-template-columns:1fr;grid-template-areas:"body" "nets" "txt" "acts" "hist";grid-template-rows:none}.arch-grid.list .pc-body{grid-row:auto}.arch-grid.list .pc-media{max-height:300px;width:auto}}
 </style>
+<style>.pc-tag.rp{background:var(--panel-2);color:var(--muted);box-shadow:inset 0 0 0 1px var(--line)}</style>
 </head><body><div class="app">
   <header class="top">
     <button class="logo" id="logoHome" type="button" title="Empezar una card nueva" aria-label="Empezar una card nueva"></button>
@@ -5832,6 +5833,7 @@ function archCard(rec,open){
   const nH=window.acsHistN?window.acsHistN(rec):0; if(nH>1) stTx+=' · '+trn(nH,'Publicada {n} vez','Publicada {n} veces'); else if(rec.reposts&&rec.reposts.length) stTx+=' · '+tr('Reposteada')+(rec.reposts.length>1?' ×'+rec.reposts.length:''); else if(window.acsIsRepost&&window.acsIsRepost(rec)) stTx+=' · Repost';
   sub.innerHTML=(stIc?'<span class="pc-ok">'+stIc+'</span>':'')+'<span class="pc-st">'+stTx+'</span>'; l.appendChild(sub);
   const tags=el('span','pc-tags'); [isVid?tr('Video'):tr('Imagen')].forEach(t=>tags.appendChild(el('span','pc-tag',t)));
+  if(window.acsIsRepost&&window.acsIsRepost(rec)){ let lb='Repost'; try{ const h=window.acsHistOf?window.acsHistOf(rec):null; if(h&&h.length>1){ const k=h.findIndex(e=>e.cur); if(k===0) lb='Repost - '+tr('Original'); else if(k>0) lb='Repost '+k; } }catch(e){} tags.appendChild(el('span','pc-tag rp',lb)); }
   const chev=el('span','pc-chev'); chev.innerHTML='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
   if(ARCH.selMode){ const ck=el('span','pc-ck'+(ARCH.sel.has(rec.id)?' on':'')); ck.setAttribute('role','checkbox'); ck.setAttribute('aria-checked',String(ARCH.sel.has(rec.id))); ck.innerHTML='<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg>'; head.appendChild(ck); c.classList.toggle('picked',ARCH.sel.has(rec.id)); }
   head.appendChild(ic); head.appendChild(l); if(ARCH.view==='list'){ const hs=el('span','pc-stats pc-hst'); if(window.acsArchStats&&rec.tf) window.acsArchStats(rec,hs,true); head.appendChild(hs); head.appendChild(tags); } const tfi=window.acsTfIcon&&window.acsTfIcon(rec); if(tfi) head.appendChild(tfi); if(rec.pageUrl){ const al=el('span','pc-alt'); al.setAttribute('role','link'); al.tabIndex=0; al.title=tr('Página de la app en AlternativeTo'); al.setAttribute('aria-label',al.title); al.innerHTML='<img class="alt-logo" alt="" src="'+DEFAULT_ICON+'">'; const go=e=>{ e.stopPropagation(); e.preventDefault(); window.open(rec.pageUrl,'_blank','noopener'); }; al.addEventListener('click',go); al.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' ') go(e); }); head.appendChild(al); } head.appendChild(chev); c.appendChild(head);
@@ -7912,6 +7914,7 @@ function acsHistOf(rec){
   const arr=Object.values(E).map(e=>{ if(!e.ms) e.ms=msOf(e.id); const m=TFSTAT.map[e.id]; e.st=m&&m.status; e.url=(m&&m.url)||tfUrl(e.id,c.ss); e.cur=rec.tf&&String(rec.tf.draft)===e.id; return e; });
   arr.sort((a,b)=>(a.ms||9e15)-(b.ms||9e15)); return arr;
 }
+window.acsHistOf=acsHistOf;
 window.acsHistN=function(rec){ try{ return acsHistOf(rec).length; }catch(e){ return 0; } };
 window.acsArchHist=function(rec){
   let h; try{ h=acsHistOf(rec); }catch(e){ return null; } if(h.length<2) return null;

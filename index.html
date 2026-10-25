@@ -7274,7 +7274,7 @@ window.acsTfCheck=async function(){
   if(!pool.length){ toast('No hay posts que verificar.',2500); return; }
   ARCH.checking=true; archRender(); toast(tr('Buscando en Typefully…'),60000);
   try{
-    const ss=c.ss; const lists=await Promise.all([tfListAll(ss,'published'),tfListAll(ss,'scheduled'),tfListAll(ss,'draft')]);
+    const ss=c.ss; const lists=await Promise.all([tfListAll(ss,'published',3000),tfListAll(ss,'scheduled',500),tfListAll(ss,'draft',500)]);
     if(lists.every(x=>x===null)){ toast('No se pudo leer Typefully. Revisa la conexión.',4500); return; }
     const all=[]; ['published','scheduled','draft'].forEach((st,i)=>(lists[i]||[]).forEach(d=>all.push({d,st,txt:tfNorm(tfDraftText(d)+' '+(d.draft_title||d.title||''))})));
     const used=new Set(ARCH.list.filter(r=>r.tf&&r.tf.draft!=null&&!pool.includes(r)).map(r=>String(r.tf.draft)));
@@ -7301,18 +7301,18 @@ window.acsTfCheck=async function(){
     // second pass: was this app already published earlier on Typefully? -> mark as repost
     const slugOf=t=>{ const m=/alternativeto\.net\/software\/([^\/\s"'?#)\\<>]+)/i.exec(String(t||'')); return m?m[1].toLowerCase():''; };
     const pubs=(lists[0]||[]).map(d=>({d,id:String(d.id),ms:tfDraftMs(d,true),slug:slugOf(JSON.stringify(d)),txt:tfNorm((d.draft_title||d.title||'')+' '+tfDraftText(d)),shared:tfTagsOf(d).some(x=>/shared[- ]?apps/i.test(x))})).filter(x=>x.ms);
-    let reposted=0;
+    let reposted=0; const OUT=new Map(); const fd=ms=>new Date(ms).toLocaleDateString(undefined,{day:'numeric',month:'short',year:'numeric'});
     for(const rec of pool){
-      if(rec.repostOf) continue; const own=rec.tf&&rec.tf.draft!=null?String(rec.tf.draft):''; if(!own) continue;
+      if(rec.repostOf){ OUT.set(rec.id,'ya estaba marcada como repost'); continue; } const own=rec.tf&&rec.tf.draft!=null?String(rec.tf.draft):''; if(!own) continue;
       const st=TFSTAT.map[own]; let myMs=(st&&st.ms)||Date.parse((rec.tf&&rec.tf.when)||'')||rec.savedAt||0; if(!myMs) continue;
       const rs=slugOf(JSON.stringify(rec.texts||{})+' '+(rec.pageUrl||'')), nm=tfNorm(rec.name);
-      const hits=pubs.filter(x=>x.id!==own&&x.ms<myMs-864e5&&((rs&&x.slug===rs)||(nm.length>=4&&x.shared&&(' '+x.txt+' ').includes(' '+nm+' '))));
-      if(!hits.length) continue;
+      const hits=pubs.filter(x=>x.id!==own&&x.ms<myMs-864e5&&((rs&&x.slug===rs)||(nm.length>=4&&(x.shared||x.txt.slice(0,100).includes(nm))&&(' '+x.txt+' ').includes(' '+nm+' '))));
+      if(!hits.length){ OUT.set(rec.id,'no hay ninguna publicación anterior en Typefully (revisé '+pubs.length+' publicadas)'); continue; }
       const prev=hits.slice().sort((a,b)=>b.ms-a.ms)[0], orig=ARCH.list.find(r=>r!==rec&&r.tf&&String(r.tf.draft)===prev.id);
       rec.repostOf=orig?orig.id:'tf:'+prev.id; rec.repostAuto={draft:prev.id,ms:prev.ms}; rec.prior=hits.map(h=>({draft:h.id,ms:h.ms}));
       try{ await archPut(rec); if(window.acsSync) acsSync.pushPost(rec); }catch(e){}
       if(orig&&!(orig.reposts||[]).some(x=>String(x.draft)===own)){ (orig.reposts=orig.reposts||[]).push({at:Date.now(),draft:own}); try{ await archPut(orig); if(window.acsSync) acsSync.pushPost(orig); }catch(e){} }
-      reposted++;
+      reposted++; OUT.set(rec.id,'es un repost: ya publicada '+(hits.length>1?hits.length+' veces; la última el ':'el ')+fd(prev.ms));
     }
     // put the Repost tag on those drafts in Typefully too
     let tagged=0, rslug=null; const byId={}; all.forEach(x=>{ byId[String(x.d.id)]=x.d; });
@@ -7324,7 +7324,7 @@ window.acsTfCheck=async function(){
       try{ await tfCall('PATCH','/social-sets/'+ss+'/drafts/'+rec.tf.draft,{tags:cur.concat(rslug)}); tagged++; const m=TFSTAT.map[String(rec.tf.draft)]; if(m) m.tags=(m.tags||[]).concat('Repost'); }catch(e){}
     }
     TFSTAT.loaded=false; TFSTAT.loading=false; tfStatPrime();
-    toast(tr('Typefully: {a} vinculadas, {b} ya lo estaban, {c} sin encontrar',{a:linked,b:already,c:none})+(reposted?' · '+trn(reposted,'{n} marcada como repost','{n} marcadas como repost'):'')+(tagged?' · '+trn(tagged,'{n} etiquetada en Typefully','{n} etiquetadas en Typefully'):''),8000);
+    toast(tr('Typefully: {a} vinculadas, {b} ya lo estaban, {c} sin encontrar',{a:linked,b:already,c:none})+(reposted?' · '+trn(reposted,'{n} marcada como repost','{n} marcadas como repost'):'')+(tagged?' · '+trn(tagged,'{n} etiquetada en Typefully','{n} etiquetadas en Typefully'):'')+(pool.length<=3?' — '+pool.map(r=>r.name+': '+(OUT.get(r.id)||(r.tf&&r.tf.draft!=null?'sin comprobar repost (aún no está en Typefully)':'no se encontró en Typefully'))).join(' · '):''),pool.length<=3?14000:8000);
   }catch(e){ toast('Falló la verificación con Typefully.',4000); }
   finally{ ARCH.checking=false; if(ARCH.open) archRender(); }
 };

@@ -346,8 +346,10 @@ input[type=range]{width:100%;accent-color:var(--brand)}
 @media (max-width:640px){.bl-acts{flex:1 0 100%;padding-left:36px}.bl-acts .btn.sm span{display:inline}}
 .btn.saved{color:var(--ok);border-color:color-mix(in srgb,var(--ok) 45%,var(--line-2));background:color-mix(in srgb,var(--ok) 10%,var(--bg))}.btn.saved:hover{background:color-mix(in srgb,var(--ok) 16%,var(--bg))}
 .preview-head{justify-content:flex-start}.preview-head #dim{margin-right:auto}
-#btnDone{background:var(--ok);border-color:var(--ok);color:#fff;font-weight:600}#btnDone:hover{background:color-mix(in srgb,var(--ok) 85%,#000)}
-#btnDone.saved{background:color-mix(in srgb,var(--ok) 12%,var(--bg));border-color:color-mix(in srgb,var(--ok) 50%,var(--line-2));color:var(--ok)}#btnDone.saved:hover{background:color-mix(in srgb,var(--ok) 20%,var(--bg))}
+#btnDone{background:color-mix(in srgb,var(--ok) 12%,var(--bg));border-color:color-mix(in srgb,var(--ok) 50%,var(--line-2));color:var(--ok);font-weight:600}
+#btnDone:hover{background:color-mix(in srgb,var(--ok) 20%,var(--bg))}
+#btnDone.saved{background:var(--ok);border-color:var(--ok);color:#fff}
+#btnDone.saved:hover{background:color-mix(in srgb,var(--ok) 85%,#000)}
 .conn{position:relative;display:inline-flex}
 #connBtn{display:inline-flex;align-items:center;gap:6px;height:32px}#connBtn svg:last-child{width:13px;height:13px;opacity:.7}
 #connBtn.on svg:first-child{color:var(--ok)}
@@ -721,6 +723,8 @@ a.tfc-chip:hover{border-color:var(--brand)}
 .tfm-chip.dg .tfm-tgs,.tfc-chip.dg .tfm-tgs{max-width:calc(100% - 16px)}
 @media(hover:none){.tfm-chip.dg::after,.tfc-chip.dg::after{opacity:.55}}
 </style>
+<style>.preview-head #btnDone{margin-left:auto}.tf-row{display:flex;width:100%}.tf-row #tfSend{width:100%;justify-content:center}</style>
+<style>.tf-row #tfSend{min-height:46px;font-size:15px;font-weight:600;gap:10px}.tf-row #tfSend .tf-logo{border-radius:6px;box-shadow:0 0 0 1.5px #fff}</style>
 </head><body><div class="app">
   <header class="top">
     <div class="logo" aria-hidden="true"></div>
@@ -786,7 +790,7 @@ a.tfc-chip:hover{border-color:var(--brand)}
       <div class="actions">
         <button class="btn primary" id="btnVideo" type="button" hidden>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0-4-4m4 4 4-4M4 21h16"/></svg><span id="videoTxt">Descargar video (MP4)</span></button>
-        <button class="btn primary" id="btnDownload" type="button">
+        <button class="btn" id="btnDownload" type="button">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0-4-4m4 4 4-4M4 21h16"/></svg>Descargar PNG</button>
         <button class="btn" id="btnCopy" type="button">Copiar imagen</button>
         <label class="sr" for="expScale">Tamaño de exportación</label>
@@ -4741,7 +4745,7 @@ function syncExportButtons(){
   const v=S.fmt==='video', has=hasVideoThumb();
   $('btnVideo').hidden=!v; $('btnVideo').disabled=!has||!!exporting;
   $('videoTxt').textContent = tr(has ? 'Descargar video (MP4)' : 'Descargar video (sube un MP4 en «Captura»)')+(has&&vSpeed!==1?' · '+vSpeed+'×':'');
-  $('btnDownload').classList.toggle('primary',!v);
+  $('btnDownload').classList.remove('primary');
   $('btnDownload').disabled=!!exporting;
 }
 function paintTrim(){
@@ -5692,7 +5696,7 @@ function archPaintEdit(){
   if(bar){ bar.hidden=!(e||rp); if(e){ bar.querySelector('.ae-t').textContent=tr('Editando «{x}»',{x:e.name}); } else if(rp){ bar.querySelector('.ae-t').textContent=tr('Repost de «{x}»',{x:rp.name}); } }
   if(u) u.hidden=true;
   if(d&&!d.dataset.flash){ const rec=archCurrent(); d.classList.toggle('saved',!!rec); d.title=rec?tr('Ya está en el archivo: actualiza su card'):'';
-    const t=tr(rec?'Actualizar':'Completado'); if(d.lastElementChild&&d.lastElementChild.textContent!==t) d.lastElementChild.textContent=t; }
+    const t=tr('Guardar'); if(d.lastElementChild&&d.lastElementChild.textContent!==t) d.lastElementChild.textContent=t; }
 }
 window.__archPE=()=>{ try{ archPaintEdit(); }catch(e){} };
 async function archEdit(rec){
@@ -5867,7 +5871,7 @@ window.addEventListener('beforeunload',e=>{ if(!acsUnsaved()) return; e.preventD
 function initArchive(){
   if(!ARCH) return;
   if(!$('btnDone')){
-    const c=$('btnCopy'); if(c){ const b=el('button','btn'); b.type='button'; b.id='btnDone'; b.innerHTML=DK_ICON.ok+'<span>'+tr('Completado')+'</span>'; b.addEventListener('click',markDone); const ph0=document.querySelector('.preview-head'); let pm=$('pvMain'); if(!pm){ pm=el('div','pv-main'); pm.id='pvMain'; ph0.parentElement.insertBefore(pm,ph0); } pm.appendChild(b);
+    const c=$('btnCopy'); if(c){ const b=el('button','btn'); b.type='button'; b.id='btnDone'; b.innerHTML=DK_ICON.ok+'<span>'+tr('Guardar')+'</span>'; b.addEventListener('click',markDone); document.querySelector('.preview-head').appendChild(b);
       const u=el('button','btn primary'); u.type='button'; u.id='btnUpd'; u.hidden=true; u.innerHTML=archIcon('<path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/>')+'<span>'+tr('Actualizar en el archivo')+'</span>'; u.addEventListener('click',archUpdate); c.after(u);
       const bar=el('div','archedit'); bar.id='archEdit'; bar.hidden=true; bar.innerHTML='<span class="ae-t"></span>'; const x=el('button','btn ghost sm'); x.type='button'; x.textContent=tr('Cancelar edición'); x.addEventListener('click',archEditCancel); bar.appendChild(x);
       const ph=document.querySelector('.preview-head'); ph.parentElement.insertBefore(bar,$('pvMain')||ph); }
@@ -6972,14 +6976,14 @@ async function tfStart(){
   if(!ghCfg()){ toast('Primero conecta GitHub (menú Conexiones): hace falta para subir la imagen.',4200); openGhDialog(); return; }
   if(typeof exporting!=='undefined'&&exporting){ toast('Espera a que termine la exportación del video.'); return; }
   const need=tfNeedsSave(archCurrent());
-  const go=async()=>{ if(need){ await archSave(); } const rec=archCurrent(); if(!rec||tfNeedsSave(rec)){ toast('No se pudo guardar la card en el archivo.',4200); return; } openTfModal(rec); };
+  const go=async()=>{ if(need){ await archSave(); } const rec=archCurrent(); if(!rec||tfNeedsSave(rec)){ toast('No se pudo guardar la card en el archivo.',4200); return; } openTfModal(rec,{editor:true}); };
   if(need) tfGate(btn,need==='new'?'¿Guardar y enviar?':'¿Actualizar y enviar?',go); else go();
 }
 function ensureTfBtn(n){
   if($('tfSend')) return; const d=$('btnDone');
   if(!d){ if((n||0)<80) setTimeout(()=>ensureTfBtn((n||0)+1),250); return; }
-  const b=el('button','btn'); b.type='button'; b.id='tfSend'; b.innerHTML=tfLogoHtml(18)+'<span>'+tr('Programar en Typefully')+'</span>';
-  b.addEventListener('click',tfStart); d.after(b);
+  const b=el('button','btn primary'); b.type='button'; b.id='tfSend'; b.innerHTML=tfLogoHtml(18)+'<span>'+tr('Programar en Typefully')+'</span>';
+  b.addEventListener('click',tfStart); const act=document.querySelector('.preview .actions'); if(act){ const w=el('div','tf-row'); w.appendChild(b); act.before(w); } else d.after(b);
 }
 ensureTfBtn(0);
 
@@ -7038,7 +7042,7 @@ function tfNetCard(rec,k,name,state){
   card._cb=cb; card._posts=posts; card._setPosts=a=>{ posts=a.slice(); view(); }; view(); return card;
 }
 const TF_CK='<svg class="tfm-ck" viewBox="0 0 52 52" aria-hidden="true"><circle class="c" cx="26" cy="26" r="23"/><path class="k" d="M15 27.5l8 8 14.5-17"/></svg>';
-async function openTfModal(rec){
+async function openTfModal(rec,opts){
   if($('tfModal')) return; const c=tfCfg(); const state={saveText:async()=>{},thumb:null,icon:null,slot:null,mode:'slot',tag:'',slots:null,view:'all',dayKey:null,tagMap:{},upd:()=>{}};
   try{ if(rec.thumb) state.thumb=URL.createObjectURL(new Blob([rec.thumb],{type:'image/jpeg'})); }catch(e){}
   try{ if(rec.icon) state.icon=URL.createObjectURL(new Blob([rec.icon],{type:'image/png'})); }catch(e){}
@@ -7140,7 +7144,7 @@ async function openTfModal(rec){
   const prog=el('div','tfm-prog'); prog.hidden=true; const pbar=el('div','tfm-pbar'); const pfill=el('i'); pbar.appendChild(pfill); const ptxt=el('span','tfm-ptxt'); prog.append(ptxt,pbar);
   const msg=el('p','gh-msg'); msg.setAttribute('role','status'); box.appendChild(msg);
   const btns=el('div','kbtns'); const send=el('button','btn primary',tr('Programar en Typefully')); send.type='button'; const cl=el('button','btn ghost',tr('Cancelar')); cl.type='button'; btns.append(pbox,prog,cl,send); box.appendChild(btns);
-  function close(){ ov.remove(); document.removeEventListener('keydown',onKey); [state.thumb,state.icon].forEach(u=>{ if(u) try{ URL.revokeObjectURL(u); }catch(e){} }); } function onKey(e){ if(e.key==='Escape'&&!state.busy) close(); }
+  function close(){ ov.remove(); document.removeEventListener('keydown',onKey); if(state.sentOk&&opts&&opts.editor){ try{ resetAll(true); setFmt('image'); window.scrollTo({top:0}); }catch(e){} } [state.thumb,state.icon].forEach(u=>{ if(u) try{ URL.revokeObjectURL(u); }catch(e){} }); } function onKey(e){ if(e.key==='Escape'&&!state.busy) close(); }
   const picked=()=>cards.filter(cd=>cd._cb.checked);
   state.upd=()=>{ const n=picked().length;
     let ok=n>0&&!!rec.texts; let s='';
@@ -7213,7 +7217,7 @@ async function openTfModal(rec){
       if(job.alt){ const ok=res&&res.alt==='ok'; tx.appendChild(el('p','dim',(ok?tr('Alt text aplicado en Typefully: '):tr('Alt text generado, pero Typefully no lo aceptó por la API (cópialo): '))+job.alt)); }
       tx.appendChild(el('p',null,job.publish_at?tr('{d}, {t} (tu hora) · {t2} ({z})',{d:tfFmtDay(state.slot.ms,undefined,true),t:tfFmtLocal(state.slot.ms),t2:tfFmtTime(state.slot.ms,state.tz),z:tfTzName(state.tz)}):tr('Quedó sin fecha, para revisarlo en Typefully.')));
       const lk=el('a','btn sm tfm-view'); lk.href=durl; lk.target='_blank'; lk.rel='noopener noreferrer'; lk.innerHTML=archIcon('<path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>')+'<span>'+tr('Ver en Typefully')+'</span>'; tx.appendChild(lk);
-      ok.appendChild(tx); box.insertBefore(ok,btns); send.hidden=true; cl.textContent=tr('Cerrar'); cl.disabled=false; toast('Enviado a Typefully',2600);
+      ok.appendChild(tx); box.insertBefore(ok,btns); send.hidden=true; cl.textContent=tr('Cerrar'); cl.disabled=false; state.sentOk=true; toast('Enviado a Typefully',2600);
     }catch(e){ if(tm) clearInterval(tm); prog.hidden=true; if(state.prior) pbox.hidden=false; msg.textContent=tr('Falló')+': '+(e&&e.code?ghMsg(e):(e.status?tfErr(e):e.message||String(e))); [t1,t2].forEach(b=>b.disabled=false); cl.disabled=false; }
     finally{ state.busy=false; state.upd(); }
   });

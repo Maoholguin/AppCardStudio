@@ -660,6 +660,12 @@ a.tfc-chip:hover{border-color:var(--brand)}
 <style>.pc-hist{margin:10px 12px 2px;padding-top:8px;border-top:1px solid var(--line)}.pc-hh{font-size:11.5px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px}.pc-hl{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:3px;font-size:12.5px}.pc-hl li{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.pc-hl a{color:var(--tint-fg);text-decoration:none;font-weight:600;font-variant-numeric:tabular-nums}.pc-hl a:hover{text-decoration:underline}.pc-hk{color:var(--muted)}.pc-hk.cur{color:var(--fg)}.pc-hs{margin-left:auto;color:var(--muted);font-variant-numeric:tabular-nums}</style>
 <style>#ghBtn .gh-sync{display:none}#ghBtn[data-s="busy"] .gh-sync{display:block;animation:ghspin 1s linear infinite}#ghBtn[data-s="busy"] .gh-logo{display:none}#ghBtn[data-s="busy"] svg{animation:none}#ghBtn[data-s="busy"] .gh-sync{animation:ghspin 1s linear infinite}#ghBtn[data-s="off"] .gh-logo{opacity:.6}</style>
 <style>.arch-gh{grid-column:1/-1;display:flex;align-items:center;gap:8px;width:100%;margin:6px 0 0;padding:6px 2px;border:0;background:none;color:var(--fg);font:inherit;font-size:13px;font-weight:600;cursor:pointer;text-align:left;border-bottom:1px solid var(--line)}.arch-gh:first-child{margin-top:0}.arch-gh svg{color:var(--muted);transition:transform .15s}.arch-gh.off svg{transform:rotate(-90deg)}.arch-gh i{font-style:normal;font-size:11.5px;font-weight:600;color:var(--muted);background:var(--panel);border-radius:8px;padding:0 6px;min-width:18px;text-align:center}.arch-gh:hover .arch-gl{color:var(--tint-fg)}.arch-gd .tfs-ddb{height:32px}.arch-gd .tfs-ddm{right:0;left:auto}</style>
+<style>.pc-nets .pc-stats{flex:none;white-space:nowrap;gap:10px}.pc-nets .acs-pts{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}.acs-sep{width:1px;height:14px;background:var(--line-2);flex:none}</style>
+<style>.arch-tools .seg.sc button{display:inline-flex;align-items:center;gap:6px}.arch-sel span{display:none}.arch-sel[aria-pressed="true"] span{display:inline}.arch-gd .tfs-ddl{display:none}.arch-gd .tfs-ddb{padding:0 10px;gap:6px;height:auto;min-height:36px}.arch-gd.act .tfs-ddb{background:var(--tint);color:var(--tint-fg);border-color:var(--tint)}
+@media (max-width:1100px){.arch-chk span{display:none}}
+@media (min-width:900px){.arch-tools{flex-wrap:nowrap}.arch-fl{flex-wrap:nowrap}}</style>
+<style>.arch-tools .seg button{white-space:nowrap}.arch-tools .arch-rt{flex-wrap:nowrap;flex:none}@media (min-width:900px){.arch-fl{gap:12px}.arch-fl .seg button{padding:0 11px;font-size:13.5px}.arch-tools{gap:10px}}</style>
+<style>@media (min-width:900px) and (max-width:1180px){.arch-fl{gap:8px}.arch-fl .seg button{padding:0 8px;font-size:13px;gap:4px}.arch-tools{gap:8px}.arch-tools .seg i{padding:0 5px}.arch-tools .vw button{padding:0 8px}}</style>
 </head><body><div class="app">
   <header class="top">
     <div class="logo" aria-hidden="true"></div>
@@ -5696,7 +5702,7 @@ function archCard(rec,open){
       const cb=el('button','btn ghost sm'); cb.type='button'; cb.textContent=tr('Copiar'); cb.addEventListener('click',async()=>{ const ok=await copyText(s); toast(ok?'Texto copiado':'No se pudo copiar',1800); });
       h.appendChild(cb); w.appendChild(h); w.appendChild(el('div','pc-t',s)); txt.appendChild(w); };
     part(tr('Texto principal'),t.main||'—'); if(t.reply&&t.reply.trim()&&(PUBMODES[net]||{}).thread!==false) part(tr('Respuesta del hilo'),t.reply);
-    nets.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.net===net)));
+    nets.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.net===net))); if(typeof stw!=='undefined'){ stw.dataset.net=net; if(stw._repaint) stw._repaint(); }
   };
   DOCK_NETS.forEach(([k,name])=>{
     const b=el('button','btn sm pcn'); b.type='button'; b.dataset.net=k; b.title=name; b.setAttribute('aria-label',name);
@@ -5717,7 +5723,7 @@ function archCard(rec,open){
   const tfb=window.acsTfIcon&&window.acsTfIcon(rec,true); if(tfb) acts.appendChild(tfb);
   acts.appendChild(del);
   if(window.acsArchRepost&&rec.tf&&rec.tf.draft!=null&&rec.state){ const rp=el('button','btn sm'); rp.type='button'; rp.innerHTML=archIcon('<path d="m17 2 4 4-4 4"/><path d="M3 11V9a3 3 0 0 1 3-3h15"/><path d="m7 22-4-4 4-4"/><path d="M21 13v2a3 3 0 0 1-3 3H3"/>')+'<span>Repost</span>'; rp.addEventListener('click',()=>window.acsArchRepost(rec)); acts.insertBefore(rp,del); }
-  const stw=el('span','pc-stats'); if(window.acsArchStats&&rec.tf) window.acsArchStats(rec,stw); nets.appendChild(stw);
+  const stw=el('span','pc-stats'); stw.dataset.net=net; if(window.acsArchStats&&rec.tf) window.acsArchStats(rec,stw); nets.appendChild(stw);
   const wrap=el('div','pc-open'); wrap.appendChild(body); wrap.appendChild(nets); wrap.appendChild(txt); const hist=window.acsArchHist&&window.acsArchHist(rec); if(hist) wrap.appendChild(hist); wrap.appendChild(acts); c.appendChild(wrap); paint(); return c;
 }
 function archRender(){
@@ -5781,13 +5787,13 @@ async function archShow(keep){
       b.addEventListener('click',()=>{ ARCH.view=v; try{ localStorage.setItem('acs.archView',v); }catch(e){} archRender(); }); vw.appendChild(b); });
     const rt=el('div','arch-rt');
     if(window.ACS_STANDALONE&&window.acsTfCheck){
-      const sb=el('button','btn sm arch-sel'); sb.type='button'; sb.innerHTML=archIcon('<rect x="4" y="4" width="16" height="16" rx="3"/><path d="m8.5 12 2.5 2.5 4.5-5"/>')+'<span>'+tr('Seleccionar')+'</span>';
+      const sb=el('button','arch-sel'); sb.type='button'; sb.title=tr('Seleccionar'); sb.setAttribute('aria-label',tr('Seleccionar')); sb.innerHTML=archIcon('<rect x="4" y="4" width="16" height="16" rx="3"/><path d="m8.5 12 2.5 2.5 4.5-5"/>')+'<span>'+tr('Seleccionar')+'</span>';
       sb.addEventListener('click',()=>{ ARCH.selMode=!ARCH.selMode; if(!ARCH.selMode) ARCH.sel.clear(); ARCH.openId=null; archRender(); });
-      const cb=el('button','btn sm arch-chk'); cb.type='button'; cb.innerHTML=window.acsTfIconHtml()+'<span>'+tr('Verificar en Typefully')+'</span>'; cb.title=tr('Busca en Typefully los posts que no están vinculados y los enlaza');
+      const cb=el('button','arch-chk'); cb.type='button'; cb.innerHTML=window.acsTfIconHtml()+'<span>'+tr('Verificar en Typefully')+'</span>'; cb.title=tr('Busca en Typefully los posts que no están vinculados y los enlaza');
       cb.addEventListener('click',()=>window.acsTfCheck());
-      rt.appendChild(sb); rt.appendChild(cb);
+      const sc=el('div','seg sc'); sc.appendChild(sb); sc.appendChild(cb); rt.appendChild(sc);
     }
-    if(typeof tfsDD==='function'){ const gd=tfsDD(()=>ARCH.group,v=>{ ARCH.group=v; ARCH.coll.clear(); try{ localStorage.setItem('acs.archGroup',v); }catch(e){} gd.sync(); archRender(); },tr('Agrupar')); gd.classList.add('arch-gd'); gd.title=tr('Agrupar'); gd.setOpts([['none',tr('Sin agrupar')],['date',tr('Agrupar por fecha')],['month',tr('Agrupar por mes')]]); rt.appendChild(gd); }
+    if(typeof tfsDD==='function'){ const gd=tfsDD(()=>ARCH.group,v=>{ ARCH.group=v; ARCH.coll.clear(); try{ localStorage.setItem('acs.archGroup',v); }catch(e){} gd.sync(); archRender(); },tr('Agrupar')); gd.classList.add('arch-gd'); gd.title=tr('Agrupar'); gd.querySelector('.tfs-ddb').insertAdjacentHTML('afterbegin',archIcon('<path d="M3 6h18M3 12h18M3 18h18" stroke-dasharray="0"/><path d="M8 3v3M8 9v3M8 15v3" opacity=".0"/>').replace('<path d="M3 6h18M3 12h18M3 18h18" stroke-dasharray="0"/><path d="M8 3v3M8 9v3M8 15v3" opacity=".0"/>','<rect x="3" y="4" width="18" height="6" rx="1.5"/><rect x="3" y="14" width="18" height="6" rx="1.5"/>')); const gs=gd.sync; gd.sync=()=>{ gs(); gd.classList.toggle('act',ARCH.group!=='none'); }; gd.setOpts([['none',tr('Sin agrupar')],['date',tr('Agrupar por fecha')],['month',tr('Agrupar por mes')]]); gd.sync(); rt.appendChild(gd); }
     rt.appendChild(vw);
     tools.appendChild(fl); tools.appendChild(rt);
     ov.appendChild(top); ov.appendChild(hero); ov.appendChild(tools); ov.appendChild(grid); document.body.appendChild(ov);
@@ -7505,11 +7511,11 @@ window.tfsWarm=function(drafts,ss,cb){ const items=drafts.map(d=>tfsPub(d,ss)).f
 window.acsArchStats=function(rec,host,cacheOnly){
   const c=tfCfg(); if(!c||!c.ss||!rec.tf||rec.tf.draft==null) return; const id=String(rec.tf.draft);
   const NI=n=>'<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" aria-hidden="true">'+MODE_ICON[n]+'</svg>';
-  const paint=()=>{ const m=TFS.m[id]||{}; host.textContent='';
-    [['bs','bluesky','Bluesky'],['ma','mastodon','Mastodon']].forEach(([k,net,nm])=>{ const x=m[k]; if(!x) return; const uu=(m.u||{})[k]; const b=el(uu?'a':'span','acs-n '+k); if(uu){ b.href=uu; b.target='_blank'; b.rel='noopener noreferrer'; b.addEventListener('click',e=>e.stopPropagation()); } b.title=nm+' · '+x.l+' ♥ · '+((x.r||0)+(x.q||0))+' ↻ · '+(x.c||0)+' 💬'; b.innerHTML=NI(net)+'<b>'+x.l+'</b>'; host.appendChild(b); });
-    const lk=m.lk||{}; [['x','X'],['threads','Threads'],['linkedin','LinkedIn']].forEach(([n,nm])=>{ if(!lk[n]) return; const a=el('a','acs-lk'); a.href=lk[n]; a.target='_blank'; a.rel='noopener noreferrer'; a.title=tr('Abrir en {x}',{x:nm}); a.setAttribute('aria-label',a.title); a.innerHTML=NI(n); a.addEventListener('click',e=>e.stopPropagation()); host.appendChild(a); });
-    const s=tfsScore(m,'all'); if(s>=0){ const p=el('span','acs-pts','★ '+s); p.title=tr('Puntaje: ♥ + 2×(↻ + citas) + 2×💬'); host.appendChild(p); } };
-  paint(); const m0=TFS.m[id]; if(cacheOnly||(m0&&m0.lk&&m0.u&&(!tfsHas(m0)||Date.now()-(m0.at||0)<TFS_TTL))) return;
+  const paint=()=>{ const m=TFS.m[id]||{}; host.textContent=''; const sel=host.dataset.net||'';
+    [['bs','bluesky','Bluesky'],['ma','mastodon','Mastodon']].forEach(([k,net,nm])=>{ const x=m[k]; if(!x||(sel&&sel!==net)) return; const uu=(m.u||{})[k]; const b=el(uu?'a':'span','acs-n '+k); if(uu){ b.href=uu; b.target='_blank'; b.rel='noopener noreferrer'; b.addEventListener('click',e=>e.stopPropagation()); } b.title=nm+' · '+x.l+' ♥ · '+((x.r||0)+(x.q||0))+' ↻ · '+(x.c||0)+' 💬'; b.innerHTML=NI(net)+'<b>'+x.l+'</b>'; host.appendChild(b); });
+    const lk=m.lk||{}; [['x','X'],['threads','Threads'],['linkedin','LinkedIn']].forEach(([n,nm])=>{ if(!lk[n]||(sel&&sel!==n)) return; const a=el('a','acs-lk'); a.href=lk[n]; a.target='_blank'; a.rel='noopener noreferrer'; a.title=tr('Abrir en {x}',{x:nm}); a.setAttribute('aria-label',a.title); a.innerHTML=NI(n); a.addEventListener('click',e=>e.stopPropagation()); host.appendChild(a); });
+    const s=tfsScore(m,'all'); if(s>=0){ if(sel&&host.childNodes.length) host.appendChild(el('i','acs-sep')); const p=el('span','acs-pts','★ '+s); p.title=tr('Puntaje: ♥ + 2×(↻ + citas) + 2×💬'); host.appendChild(p); } };
+  host._repaint=paint; paint(); const m0=TFS.m[id]; if(cacheOnly||(m0&&m0.lk&&m0.u&&(!tfsHas(m0)||Date.now()-(m0.at||0)<TFS_TTL))) return;
   (async()=>{ try{ const d=await tfCall('GET','/social-sets/'+c.ss+'/drafts/'+id); if(d.status!=='published') return; const it=tfsPub(d,c.ss); if(!it) return; await tfsFetch([it],false); paint(); }catch(e){} })();
 };
 /* ---------- repost history of a card ---------- */

@@ -7389,15 +7389,18 @@ window.acsTfCheck=async function(){
     }
     // second pass: was this app already published earlier on Typefully? -> mark as repost
     const slugOf=t=>{ const m=/alternativeto\.net\/software\/([^\/\s"'?#)\\<>]+)/i.exec(String(t||'')); return m?m[1].toLowerCase():''; };
-    const pubs=(lists[0]||[]).map(d=>({d,id:String(d.id),ms:tfDraftMs(d,true),slug:slugOf(JSON.stringify(d)),txt:tfNorm((d.draft_title||d.title||'')+' '+tfDraftText(d)),shared:tfTagsOf(d).some(x=>/shared[- ]?apps/i.test(x))})).filter(x=>x.ms);
+    const tok=t=>tfNorm(t).split(' ').filter(Boolean).slice(0,12), sim=(A,B)=>{ if(!A.length||!B.length) return 0; const sb=new Set(B); return A.filter(w=>sb.has(w)).length/Math.min(A.length,B.length); };
+    const pubs=(lists[0]||[]).map(d=>{ const js=JSON.stringify(d); const body=tfDraftText(d); return {d,id:String(d.id),ms:tfDraftMs(d,true),slug:slugOf(js),body,tk:tok(body),txt:tfNorm((d.draft_title||d.title||'')+' '+body),blob:' '+tfNorm(js)+' ',shared:tfTagsOf(d).some(x=>/shared[- ]?apps/i.test(x))}; }).filter(x=>x.ms);
     let reposted=0; const OUT=new Map(); const fd=ms=>new Date(ms).toLocaleDateString(undefined,{day:'numeric',month:'short',year:'numeric'});
     for(const rec of pool){
       if(rec.repostOf){ OUT.set(rec.id,'ya estaba marcada como repost'); continue; } const own=rec.tf&&rec.tf.draft!=null?String(rec.tf.draft):''; if(!own) continue;
       const st=TFSTAT.map[own]; let myMs=(st&&st.ms)||Date.parse((rec.tf&&rec.tf.when)||'')||rec.savedAt||0; if(!myMs) continue;
       const rs=slugOf(JSON.stringify(rec.texts||{})+' '+(rec.pageUrl||'')), nm=tfNorm(rec.name);
       const rt=Object.values(rec.texts||{}).map(t=>tfNorm(t&&t.main)).filter(t=>t.length>=20);
-      const hits=pubs.filter(x=>x.id!==own&&x.ms<myMs-864e5&&((rs&&x.slug===rs)||rt.some(t=>x.txt.startsWith(t.slice(0,50)))||(nm.length>=4&&(x.shared||x.txt.slice(0,100).includes(nm))&&(' '+x.txt+' ').includes(' '+nm+' '))));
-      if(!hits.length){ OUT.set(rec.id,'no hay ninguna publicación anterior en Typefully'); continue; }
+      const od=all.find(x=>String(x.d.id)===own); if(od){ const t0=tfNorm(tfDraftText(od.d)); if(t0.length>=20) rt.push(t0); }
+      const hits=pubs.filter(x=>x.id!==own&&x.ms<myMs-864e5&&((rs&&x.slug===rs)||rt.some(t=>{ const A=tok(t); return A.length>=5&&x.tk.length>=5&&sim(A,x.tk)>=0.7; })||(nm.length>=5&&x.blob.includes(' '+nm+' '))||(nm.length>=4&&x.shared&&(' '+x.txt+' ').includes(' '+nm+' '))));
+      if(!hits.length){ let bs=0,bp=null; pubs.forEach(x=>{ if(x.id===own||x.ms>=myMs-864e5) return; rt.forEach(t=>{ const v=sim(tok(t),x.tk); if(v>bs){ bs=v; bp=x; } }); });
+        OUT.set(rec.id,'no hay ninguna publicación anterior en Typefully'+(bp&&bs>=0.3?' · la más parecida ('+Math.round(bs*100)+'%, '+fd(bp.ms)+'): «'+bp.body.slice(0,60)+'»':'')+(rt.length?'':' · este post no tiene textos guardados para comparar')+(rs?' · enlace buscado: '+rs:' · sin enlace de AlternativeTo')); continue; }
       const prev=hits.slice().sort((a,b)=>b.ms-a.ms)[0], orig=ARCH.list.find(r=>r!==rec&&r.tf&&String(r.tf.draft)===prev.id);
       rec.repostOf=orig?orig.id:'tf:'+prev.id; rec.repostAuto={draft:prev.id,ms:prev.ms}; rec.prior=hits.map(h=>({draft:h.id,ms:h.ms}));
       try{ await archPut(rec); if(window.acsSync) acsSync.pushPost(rec); }catch(e){}

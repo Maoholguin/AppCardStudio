@@ -730,6 +730,7 @@ a.tfc-chip:hover{border-color:var(--brand)}
 <style>.tfnc-lk{background:none;border:0;padding:0;font:inherit;color:var(--link);text-decoration:underline;cursor:pointer}</style>
 <style>.tfs-r1 .tfm-sw{margin-left:0}.tfs-cmp .tfs-nb span{display:none}.tfs-cmp .tfs-nb{padding-left:10px;padding-right:10px}</style>
 <style>.tfs-rl{font-size:11.5px;font-weight:600;color:var(--ok);white-space:nowrap}.tfs-rl.org{color:var(--muted)}</style>
+<style>.ld{display:flex;align-items:center;gap:8px}.btn.ld,button.ld{display:inline-flex}.ld::before{content:"";width:13px;height:13px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;opacity:.7;animation:tfsp .7s linear infinite;flex:none}@media(prefers-reduced-motion:reduce){.ld::before{animation-duration:2s}}</style>
 </head><body><div class="app">
   <header class="top">
     <div class="logo" aria-hidden="true"></div>
@@ -3524,7 +3525,7 @@ function initTheme(){
    ==================================================================== */
 const el = (tag,cls,txt)=>{ const e=document.createElement(tag); if(cls) e.className=cls; if(txt!=null) e.textContent=txt; return e; };
 let toastT=0;
-function toast(msg,ms){ const t=$('toast'); t.textContent=tr(msg); t.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>{t.hidden=true;},ms||3200); }
+function toast(msg,ms,spin){ const t=$('toast'); t.textContent=tr(msg); t.classList.toggle('ld',!!spin); t.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>{t.hidden=true;},ms||3200); }
 const sleep = (ms)=>new Promise(r=>setTimeout(r,ms));
 const fileBase = ()=> 'XXX - '+((S.name||'').replace(/[\\/:*?"<>|\u0000-\u001f]+/g,' ').replace(/\s+/g,' ').trim()||'App Card');   // "XXX - App Name": the number is filled in by hand later
 const slug = (s)=> (s||'app').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'') || 'app';
@@ -4517,7 +4518,7 @@ let prevDesc=null;
 async function shortenDesc(){
   const text=(S.desc||'').trim(); if(!text){ toast('Escribe o importa una descripción primero'); return; }
   const sample=await cap('sample'); if(!sample){ toast(sampleErrorCopy({code:'not_granted'})); return; }
-  const b=$('btnShorten'); b.disabled=true; const label=b.lastChild.textContent; b.lastChild.textContent=tr('Pensando…');
+  const b=$('btnShorten'); b.disabled=true; const label=b.lastChild.textContent; b.lastChild.textContent=tr('Pensando…'); b.classList.add('ld');
   try{
     const n=parseInt($('descLen').value)||0, P=F[S.fmt];
     const ask=async(extra)=>{
@@ -4532,7 +4533,7 @@ async function shortenDesc(){
       if(over(clean)) clean=await ask(' Your previous attempt was too long, so make it clearly shorter.'); }
     prevDesc=S.desc; S.desc=clean.slice(0,400); $('fDesc').value=S.desc; $('btnUndoDesc').hidden=false; scheduleRender();
   }catch(e){ toast(sampleErrorCopy(e),4200); }
-  finally{ b.disabled=false; b.lastChild.textContent=label; }
+  finally{ b.disabled=false; b.classList.remove('ld'); b.lastChild.textContent=label; }
 }
 
 /* ---------- export ---------- */
@@ -5058,7 +5059,7 @@ async function genPost(opts){
   const sample=await cap('sample'); if(!sample){ if(!opts.auto) toast(sampleErrorCopy({code:'not_granted'})); return; }
   if(!S.name.trim()&&!S.desc.trim()){ if(!opts.auto) toast('Importa o escribe primero los datos de la app'); return; }
   const run=++postRun; if(postCtl){ try{ postCtl.abort(); }catch(e){} } postCtl=new AbortController();
-  const btns=['btnPostGen','btnPostGen2'].map($); btns.forEach(b=>{ b.disabled=true; }); const lab=btns[0].textContent; btns[0].textContent=tr('Pensando…');
+  const btns=['btnPostGen','btnPostGen2'].map($); btns.forEach(b=>{ b.disabled=true; }); const lab=btns[0].textContent; btns[0].textContent=tr('Pensando…'); btns.forEach(b=>b.classList.add('ld'));
   $('postNote').textContent=tr('Claude está escribiendo…');
   try{
     const url=$('fSrcUrl').value.trim(), kw=$('fSrcKw').value.trim(), ctx=$('fSrcCtx').value.trim();
@@ -5090,7 +5091,7 @@ ${site?`\nWEBSITE OF THE APP (reference, may be noisy):\n${site}\n`:''}${kw?`\nK
     if(e&&e.code==='cancelled') return;
     $('postNote').textContent=''; paintPostCount();
     if(!opts.auto) toast(sampleErrorCopy(e),4200);
-  }finally{ if(run===postRun){ btns.forEach(b=>{ b.disabled=false; }); btns[0].textContent=lab; } }
+  }finally{ if(run===postRun){ btns.forEach(b=>{ b.disabled=false; b.classList.remove('ld'); }); btns[0].textContent=lab; } }
 }
 function autoPost(){      // called after an import: suggest a text straight away
   threadDirty=false; if($('tgThreadCta').checked) genCta(true); else refreshThread(true);
@@ -6112,8 +6113,8 @@ function blAiButtons(X,it,hasCand){
   const mk=(lab,est,tip,fn,used,usedLab)=>{ const ico=used?archIcon('<path d="m5 12 5 5 9-10"/>'):SPARK_SVG;
     const html=tr(used?usedLab:lab)+' <small class="bl-est">'+(used?(ai.cost?'≈ US$'+ai.cost.toFixed(3)+' · ':'')+tr('repetir'):est)+'</small>';
     const ab=blBtn(used?'bl-used':'',ico,html,async()=>{
-      ab.disabled=true; ab.lastChild.textContent=tr('Analizando…'); const s0=blSpent(); let r;
-      try{ r=await fn(); }finally{ ab.disabled=false; if(ab.lastChild) ab.lastChild.innerHTML=html; }
+      ab.disabled=true; ab.lastChild.textContent=tr('Analizando…'); ab.classList.add('ld'); const s0=blSpent(); let r;
+      try{ r=await fn(); }finally{ ab.disabled=false; ab.classList.remove('ld'); if(ab.lastChild) ab.lastChild.innerHTML=html; }
       const c=blSpent()-s0; toast((r==='none'?tr('No encontré una página en AlternativeTo'):tr('Análisis terminado'))+(c>0?' · ≈ US$'+c.toFixed(3):''),5600); }); ab.title=tr(used?'Ya analizada. Clic para repetir el análisis':tip); ar.appendChild(ab); };
   if(hasCand){ mk('Analizar con IA','≈ US$0.002','Compara con los datos de AlternativeTo',()=>blAnalyze(it.key,false),!!ai&&!ai.deep,'Analizada con IA'); mk('Analizar con internet','≈ US$0.03–0.10','Busca en internet para decidir',()=>blAnalyze(it.key,true),!!ai&&!!ai.deep,'Analizada con internet'); }
   else mk('Buscar con IA en internet','≈ US$0.03–0.10','Busca en internet si AlternativeTo tiene esta app',()=>blFind(it.key),!!ai,'Buscada con IA en internet');
@@ -7145,7 +7146,7 @@ async function openTfModal(rec,opts){
     pkSync();
     paintSlots(); state.upd(); });
   cui.addEventListener('input',()=>{ const ms=cui.value?new Date(cui.value).getTime():0; if(ms) state.dayKey=tfFmtDay(ms); if(ms&&ms>Date.now()+60000){ const near=state.slots&&state.slots.items.find(x=>x.free&&Math.abs(x.ms-ms)<60000); state.slot=near||mkCustom(ms); } else state.slot=null; paintSlots(); state.upd(); setTimeout(()=>{ const o=slotBox.querySelector('.tfm-chip.on'); if(o) try{ o.scrollIntoView({block:'nearest'}); }catch(e){} },0); });
-  const slotBox=el('div','tfm-slots'); slotBox.appendChild(el('p','dim',tr('Cargando huecos…'))); sch.appendChild(slotBox); const sum=el('p','tfm-sum'); sch.appendChild(sum); box.appendChild(sch);
+  const slotBox=el('div','tfm-slots'); slotBox.appendChild(el('p','dim ld',tr('Cargando huecos…'))); sch.appendChild(slotBox); const sum=el('p','tfm-sum'); sch.appendChild(sum); box.appendChild(sch);
   const prog=el('div','tfm-prog'); prog.hidden=true; const pbar=el('div','tfm-pbar'); const pfill=el('i'); pbar.appendChild(pfill); const ptxt=el('span','tfm-ptxt'); prog.append(ptxt,pbar);
   const msg=el('p','gh-msg'); msg.setAttribute('role','status'); box.appendChild(msg);
   const btns=el('div','kbtns'); const send=el('button','btn primary',tr('Programar en Typefully')); send.type='button'; const cl=el('button','btn ghost',tr('Cancelar')); cl.type='button'; btns.append(pbox,prog,cl,send); box.appendChild(btns);
@@ -7159,12 +7160,12 @@ async function openTfModal(rec,opts){
   const tagName=(t)=>state.tagMap[t]||state.tagMap[String(t).toLowerCase()]||t;
   const nmS=i=>(i.label||'').trim().slice(0,40)||tr('Publicación');
   async function reloadSlots(){ try{ const r=await tfLoadSlots(c.ss); state.slots=r; state.tz=r.tz; const keep=state.slot&&(state.slot.custom?state.slot:r.items.find(x=>x.free&&Math.abs(x.ms-state.slot.ms)<60000)); state.slot=keep||r.items.find(x=>x.free&&x.ms>Date.now()+120000)||null; }catch(e){} paintSlots(); state.upd(); }
-  async function slotMove(a,t){ state.moving=true; toast(tr('Moviendo…'),20000); try{ await tfCall('PATCH','/social-sets/'+c.ss+'/drafts/'+a.id,{publish_at:new Date(t.ms).toISOString()}); toast(tr('Movida a {t}',{t:tfFmtDay(t.ms,undefined,true)+', '+tfFmtLocal(t.ms)}),3200); }catch(e){ toast(tr('No se pudo mover')+': '+tfErr(e),6000); } state.moving=false; state.drag=null; await reloadSlots(); }
+  async function slotMove(a,t){ state.moving=true; toast(tr('Moviendo…'),20000,true); try{ await tfCall('PATCH','/social-sets/'+c.ss+'/drafts/'+a.id,{publish_at:new Date(t.ms).toISOString()}); toast(tr('Movida a {t}',{t:tfFmtDay(t.ms,undefined,true)+', '+tfFmtLocal(t.ms)}),3200); }catch(e){ toast(tr('No se pudo mover')+': '+tfErr(e),6000); } state.moving=false; state.drag=null; await reloadSlots(); }
   async function slotSwap(a,b){ state.drag=null; const o=el('div','kdlg-ov'); const bx=el('div','kdlg tfc-sw'); bx.appendChild(el('h3',null,tr('Intercambiar horarios'))); const l=x=>tfFmtDay(x.ms,undefined,true)+', '+tfFmtLocal(x.ms);
     bx.appendChild(el('p',null,tr('«{a}» pasará a {tb} y «{b}» pasará a {ta}.',{a:nmS(a),b:nmS(b),ta:l(a),tb:l(b)}))); const bt=el('div','kbtns'); const ok=el('button','btn primary',tr('Intercambiar')); ok.type='button'; const no=el('button','btn ghost',tr('Cancelar')); no.type='button'; bt.append(no,ok); bx.appendChild(bt); o.appendChild(bx);
     const cl2=()=>{ o.remove(); document.removeEventListener('keydown',kk,true); }; const kk=e=>{ if(e.key==='Escape'){ e.stopPropagation(); cl2(); } };
     no.addEventListener('click',cl2); o.addEventListener('mousedown',e=>{ if(e.target===o) cl2(); }); document.addEventListener('keydown',kk,true); document.body.appendChild(o); ok.focus();
-    ok.addEventListener('click',async()=>{ cl2(); state.moving=true; toast(tr('Intercambiando…'),30000); let st=0; try{ await tfCall('PATCH','/social-sets/'+c.ss+'/drafts/'+a.id,{publish_at:new Date(b.ms).toISOString()}); st=1; await tfCall('PATCH','/social-sets/'+c.ss+'/drafts/'+b.id,{publish_at:new Date(a.ms).toISOString()}); toast(tr('Intercambiadas'),3200); }catch(e){ let ex=''; if(st===1){ try{ await tfCall('PATCH','/social-sets/'+c.ss+'/drafts/'+a.id,{publish_at:new Date(a.ms).toISOString()}); ex=' '+tr('Dejé la primera donde estaba.'); }catch(z){ ex=' '+tr('Ojo: «{n}» quedó en la hora de la otra; revísalo en Typefully.',{n:nmS(a)}); } } toast(tr('No se pudo intercambiar')+': '+tfErr(e)+ex,9000); } state.moving=false; await reloadSlots(); }); }
+    ok.addEventListener('click',async()=>{ cl2(); state.moving=true; toast(tr('Intercambiando…'),30000,true); let st=0; try{ await tfCall('PATCH','/social-sets/'+c.ss+'/drafts/'+a.id,{publish_at:new Date(b.ms).toISOString()}); st=1; await tfCall('PATCH','/social-sets/'+c.ss+'/drafts/'+b.id,{publish_at:new Date(a.ms).toISOString()}); toast(tr('Intercambiadas'),3200); }catch(e){ let ex=''; if(st===1){ try{ await tfCall('PATCH','/social-sets/'+c.ss+'/drafts/'+a.id,{publish_at:new Date(a.ms).toISOString()}); ex=' '+tr('Dejé la primera donde estaba.'); }catch(z){ ex=' '+tr('Ojo: «{n}» quedó en la hora de la otra; revísalo en Typefully.',{n:nmS(a)}); } } toast(tr('No se pudo intercambiar')+': '+tfErr(e)+ex,9000); } state.moving=false; await reloadSlots(); }); }
   function mkChip(x){
     const b=el('button','tfm-chip'+(x.free?'':' busy')+(state.slot&&(state.slot===x||(x.custom&&state.slot.ms===x.ms))?' on':'')+(x.custom?' cu':'')); b.type='button';
     const t1=el('b',null,tfFmtLocal(x.ms)), t2=el('i',null,tfFmtTime(x.ms,state.tz)+' '+tfTzName(state.tz)); b.append(t1,t2);
@@ -7315,11 +7316,11 @@ function openTfCal(){
   const iso=ms=>new Date(ms).toISOString();
   const patchAt=(id,ms)=>tfCall('PATCH','/social-sets/'+ss+'/drafts/'+id,{publish_at:iso(ms)});
   const nm=i=>(i.title||i.text||'').trim().slice(0,40)||tr('Publicación');
-  async function moveTo(a,slot){ st.moving=true; toast(tr('Moviendo…'),20000);
+  async function moveTo(a,slot){ st.moving=true; toast(tr('Moviendo…'),20000,true);
     try{ await patchAt(a.id,slot.ms); toast(tr('Movida a {t}',{t:tfFmtDay(slot.ms,undefined,true)+', '+tfFmtLocal(slot.ms)}),3200); }
     catch(e){ toast(tr('No se pudo mover')+': '+tfErr(e),6000); }
     st.moving=false; st.drag=null; load(); }
-  async function swap(a,b){ st.moving=true; toast(tr('Intercambiando…'),30000); const ta=a.ms, tb=b.ms; let step=0;
+  async function swap(a,b){ st.moving=true; toast(tr('Intercambiando…'),30000,true); const ta=a.ms, tb=b.ms; let step=0;
     try{ await patchAt(a.id,tb); step=1; await patchAt(b.id,ta); step=2; toast(tr('Intercambiadas'),3200); }
     catch(e){ let extra=''; if(step===1){ try{ await patchAt(a.id,ta); extra=' '+tr('Dejé la primera donde estaba.'); }catch(x){ extra=' '+tr('Ojo: «{n}» quedó en la hora de la otra; revísalo en Typefully.',{n:nm(a)}); } } toast(tr('No se pudo intercambiar')+': '+tfErr(e)+extra,9000); }
     st.moving=false; st.drag=null; load(); }
@@ -7363,7 +7364,7 @@ function openTfCal(){
     vb.forEach((b,i)=>b.classList.toggle('on',VW[i][0]===st.view)); fb.forEach((b,i)=>{ const k=FL[i][0]; b.classList.toggle('on',!!st.filter[k]); b.setAttribute('aria-pressed',String(!!st.filter[k])); });
     sub.textContent=st.loading?tr('Cargando…'):tr('Horas en tu zona · la de Typefully ({z}) en pequeño',{z:tfTzName(st.tz)}); main.textContent='';
     sb.forEach((b,i)=>b.classList.toggle('on',SC[i][0]===st.sec)); const isS=st.sec==='stats'; vw.hidden=isS; fl.hidden=isS; if(isS){ sub.textContent=tr('Rendimiento de lo ya publicado · contadores públicos de Bluesky y Mastodon'); main.appendChild(sp.main); sp.show(); return; } sp.hide();
-    if(st.loading&&!st.items.size){ main.appendChild(el('p','dim tfc-empty',tr('Cargando el calendario…'))); return; }
+    if(st.loading&&!st.items.size){ main.appendChild(el('p','dim tfc-empty ld',tr('Cargando el calendario…'))); return; }
     if(st.err){ main.appendChild(el('p','tfm-note bad',st.err)); return; }
     const map=byDay(); main.appendChild(st.view==='cal'?calView(map):st.view==='day'?dayView(map):allView(map));
     if(st.view!=='all'&&st.items.size&&![...st.items.values()].some(i=>i.kind==='pub')) main.appendChild(el('p','dim tfc-foot',tr('Solo se muestran las últimas 50 publicaciones y las próximas programadas.')));
@@ -7644,7 +7645,7 @@ async function tfNoCard(item,close){
 /* repost: load an archived card into the Studio as a NEW post linked to the original */
 async function tfRepost(item,close){
   let rec=(ARCH.list||[]).find(r=>r.tf&&String(r.tf.draft)===String(item.id)), guess=false;
-  if(!rec){ toast(tr('Buscando la card en el Archivo…'),2500); rec=await tfFindCard(item); guess=!!rec; }
+  if(!rec){ toast(tr('Buscando la card en el Archivo…'),2500,true); rec=await tfFindCard(item); guess=!!rec; }
   if(!rec){ await tfNoCard(item,close); return; }
   if(!rec.state){ toast('Este post es antiguo y no se puede cargar de nuevo.',4500); return; }
   if(close) close(); await archEdit(rec);
@@ -7724,9 +7725,10 @@ function tfStatsPanel(ss,st,close,repaintCal){
     const th=el('div','tfs-th'); const src=tfsThumb(rec)||(TFS.m[i.id]&&TFS.m[i.id].img)||''; if(src){ const im=el('img'); im.alt=''; im.loading='lazy'; im.referrerPolicy='no-referrer'; im.src=src; im.addEventListener('error',()=>{ im.remove(); th.classList.add('ph'); }); th.appendChild(im); } else { th.classList.add('ph'); th.textContent=(i.title||i.text||'?').trim().charAt(0).toUpperCase(); }
     c.appendChild(th);
     const mid=el('div','tfs-mid'); const tags=(i.tags||[]);
-    const top=el('div','tfs-top'); const main1=tags.find(x=>!/repost/i.test(x))||tags[0]; const rtag=tags.find(x=>/repost/i.test(x));
-    [main1,rtag].filter((x,k,a)=>x&&a.indexOf(x)===k).forEach(t=>{ const tgs=el('span','tfs-tgc',st.tagMap[t]||t); const c0=tfTagColor(t); if(c0) tgs.style.setProperty('--tg',c0); top.appendChild(tgs); });
-    { const hm=histMap()[i.id]; const isRp=!!rtag||(rec&&rec.repostOf); const lb=hm?(hm.k===0?tr('Original'):'Repost '+hm.k):(isRp&&!rtag?'Repost':''); if(lb) top.appendChild(el('span','tfs-rl'+(hm&&hm.k===0?' org':''),lb)); }
+    const top=el('div','tfs-top'); const main1=tags.find(x=>!/repost/i.test(x))||tags[0]; const rtag=tags.find(x=>/repost/i.test(x)); const hm=histMap()[i.id];
+    const pill=(t,txt)=>{ const tgs=el('span','tfs-tgc',txt); const c0=tfTagColor(t); if(c0) tgs.style.setProperty('--tg',c0); top.appendChild(tgs); };
+    if(main1) pill(main1,st.tagMap[main1]||main1);
+    if(hm) pill(rtag||'repost',hm.k===0?'Repost - '+tr('Original'):'Repost '+hm.k); else if(rtag) pill(rtag,st.tagMap[rtag]||rtag);
     const ttl=i.title&&i.title!==i.text?i.title:((i.text||'').split(/[\n.:!?]/)[0]||'').slice(0,60); top.appendChild(el('b','tfs-ttl',ttl||tr('(sin texto)')));
     mid.appendChild(top);
     if(i.text&&i.text!==ttl) mid.appendChild(el('div','tfs-tx',i.text));
@@ -7761,7 +7763,7 @@ function tfStatsPanel(ss,st,close,repaintCal){
     const sum=el('div','tfs-sum'); sum.innerHTML='<b>'+L.length+'</b> '+tr('publicaciones')+' · ♥ <b>'+tl+'</b> · ↻ <b>'+tr_+'</b> · 💬 <b>'+tc+'</b>'+(bt?' · '+tr('Mejor etiqueta')+': <b></b>':'');
     if(bt){ const bb=sum.querySelector('b:last-of-type'); bb.textContent=st.tagMap[bt]||bt; const c0=tfTagColor(bt); if(c0) bb.style.color='color-mix(in srgb,'+c0+' 70%,var(--fg))'; }
     sum.appendChild(el('span','tfs-note',tr('Solo se leen los contadores de Bluesky y Mastodon.'))); main.appendChild(sum);
-    if(P.aiBusy) main.appendChild(el('p','dim tfs-aib',tr('Analizando el rendimiento…')));
+    if(P.aiBusy) main.appendChild(el('p','dim tfs-aib ld',tr('Analizando el rendimiento…')));
     if(P.ai){ const box=el('div','tfs-ai-box'); box.appendChild(el('div','tfs-ai-h',tr('Sugeridas para repostear')+(P.ai.note?' · '+P.ai.note:''))); P.ai.picks.forEach(p=>{ const it=P.items.find(x=>x.id===p.id); if(it) box.appendChild(card(it,0,{sug:true,why:p.why})); }); if(!P.ai.picks.length) box.appendChild(el('p','dim',tr('La IA no encontró candidatas claras.'))); main.appendChild(box); }
     if(!L.length){ main.appendChild(el('p','dim tfc-empty',tr('No hay publicaciones en este rango.'))); return; }
     const so2=L.slice(); if(P.sort==='score') so2.sort((a,b)=>(sc(b)-sc(a))||(b.ms-a.ms)); else so2.sort((a,b)=>b.ms-a.ms);
@@ -7775,7 +7777,7 @@ function tfStatsPanel(ss,st,close,repaintCal){
   function sugView(){
     const all=cands(), sum=el('div','tfs-sum'); sum.innerHTML='<b>'+all.length+'</b> '+tr('candidatas')+' · '+tr('de todo el historial de Typefully')+' · '+tr('ordenadas por rendimiento');
     main.appendChild(sum);
-    if(P.aiBusy) main.appendChild(el('p','dim tfs-aib',tr('Analizando el rendimiento…')));
+    if(P.aiBusy) main.appendChild(el('p','dim tfs-aib ld',tr('Analizando el rendimiento…')));
     if(!all.length){ main.appendChild(el('p','dim tfc-empty',tr('Ninguna publicación cumple estos filtros. Prueba con menos antigüedad o desactiva «Solo las del Archivo».'))); const old=Math.max(0,...(P.items||[]).filter(isShared).map(i=>Math.floor((Date.now()-i.ms)/864e5))); if(old&&+P.minAge>old) main.appendChild(el('p','dim',tr('Tu historial en Typefully llega hasta hace {n} días: no hay nada más antiguo que eso.',{n:old}))); return; }
     const why={}; let order=all;
     if(P.ai){ P.ai.picks.forEach(p=>{ why[p.id]=p.why; }); const pk=P.ai.picks.map(p=>all.find(i=>i.id===p.id)).filter(Boolean); order=pk.concat(all.filter(i=>!why[i.id])); if(P.ai.note) main.appendChild(el('p','dim tfs-aib',tr('IA')+': '+P.ai.note)); }

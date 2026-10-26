@@ -843,6 +843,8 @@ a.tfc-chip:hover{border-color:var(--brand)}
 <style>.tfm-tg.rp{display:inline-flex;align-items:center;flex:none;padding-left:4px;padding-right:4px;overflow:visible!important;text-overflow:clip!important;opacity:.85}.tfm-tg.rp svg{display:block}</style>
 <style>.tfm-chip.cur{box-shadow:inset 0 0 0 2px var(--brand,#0b6cb5)}.tfm-chip.cur:disabled{opacity:1}.tfm-keep{margin-top:4px}#tfUpd .kbtns{flex-wrap:wrap}</style>
 <style>#tfUpd .kdlg{width:min(600px,100%)!important;max-width:calc(100vw - 24px)}#tfUpd .kbtns{flex-wrap:wrap;justify-content:flex-end}</style>
+<style>.tfm-chip,.tfc-chip{position:relative}.tf-ico{position:absolute;top:6px;right:6px;width:22px;height:22px;border-radius:50%;object-fit:cover;background:#fff;box-shadow:0 0 0 1.5px #fff,0 0 0 2.5px rgba(0,40,70,.14);pointer-events:none}</style>
+<style>.tf-ico{width:16px;height:16px;top:7px;right:7px;box-shadow:0 0 0 1px rgba(0,40,70,.16)}</style>
 </head><body><div class="app">
   <header class="top">
     <button class="logo" id="logoHome" type="button" title="Empezar una card nueva" aria-label="Empezar una card nueva"></button>
@@ -7220,6 +7222,15 @@ const tfKey=s=>String(s||'').toLowerCase().replace(/[-_]+/g,' ').trim();
 function tfRegTags(list){ (list||[]).forEach(x=>{ const col=tfColorOf(x.color!=null?x.color:(x.colour!=null?x.colour:(x.hex||x.style||x.theme))); [x.slug,x.name].forEach(k=>{ if(k&&col) TFCOL[tfKey(k)]=col; }); }); }
 function tfTagColor(key){ const k=tfKey(key); if(!k) return ''; if(TFCOL[k]) return TFCOL[k]; if(TF_TAGNAMES[k]) return TF_TAGNAMES[k]; let h=0; for(let i=0;i<k.length;i++) h=(h*31+k.charCodeAt(i))>>>0; return TF_FALLBACK[h%TF_FALLBACK.length]; }
 const TF_RP_SVG='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m17 2 4 4-4 4"/><path d="M3 11V9a3 3 0 0 1 3-3h15"/><path d="m7 22-4-4 4-4"/><path d="M21 13v2a3 3 0 0 1-3 3H3"/></svg>';
+/* small round app icon for a slot that holds one of our archived posts (matched by Typefully draft id) */
+const TF_ICO={};
+function tfIconEl(draftId){
+  if(draftId==null||draftId==='') return null; let rec=null;
+  try{ rec=(ARCH.list||[]).find(r=>r.tf&&r.tf.draft!=null&&String(r.tf.draft)===String(draftId)&&r.icon&&r.icon.byteLength); }catch(e){}
+  if(!rec) return null;
+  const k=rec.id+':'+rec.icon.byteLength; let u=TF_ICO[k]; if(!u){ try{ u=TF_ICO[k]=URL.createObjectURL(new Blob([rec.icon],{type:'image/png'})); }catch(e){ return null; } }
+  const i=document.createElement('img'); i.className='tf-ico'; i.src=u; i.alt=''; i.draggable=false; i.title=rec.name||''; return i;
+}
 function tfTagPill(key,label){ if(/^repost$/i.test(String(key||''))||/^repost$/i.test(String(label||''))){ const r=el('span','tfm-tg tg rp'); r.innerHTML=TF_RP_SVG; r.title=label||'Repost'; r.setAttribute('aria-label',label||'Repost'); return r; }
   const s=el('span','tfm-tg tg',label||key); const c=tfTagColor(key); if(c) s.style.setProperty('--tg',c); return s; }
 function tfCfg(){ try{ const j=JSON.parse(localStorage.getItem(TF_KEY)||'null'); return j&&j.key?j:null; }catch(e){ return null; } }
@@ -7518,7 +7529,7 @@ async function openTfModal(rec,opts){
     ok.addEventListener('click',async()=>{ cl2(); state.moving=true; toast(tr('Intercambiando…'),30000,true); let st=0; try{ await tfCall('PATCH','/social-sets/'+c.ss+'/drafts/'+a.id,{publish_at:new Date(b.ms).toISOString()}); st=1; await tfCall('PATCH','/social-sets/'+c.ss+'/drafts/'+b.id,{publish_at:new Date(a.ms).toISOString()}); toast(tr('Intercambiadas'),3200); }catch(e){ let ex=''; if(st===1){ try{ await tfCall('PATCH','/social-sets/'+c.ss+'/drafts/'+a.id,{publish_at:new Date(a.ms).toISOString()}); ex=' '+tr('Dejé la primera donde estaba.'); }catch(z){ ex=' '+tr('Ojo: «{n}» quedó en la hora de la otra; revísalo en Typefully.',{n:nmS(a)}); } } toast(tr('No se pudo intercambiar')+': '+tfErr(e)+ex,9000); } state.moving=false; await reloadSlots(); }); }
   function mkChip(x){
     const b=el('button','tfm-chip'+(x.free?'':' busy')+(state.slot&&(state.slot===x||(x.custom&&state.slot.ms===x.ms))?' on':'')+(x.custom?' cu':'')); b.type='button';
-    const t1=el('b',null,tfFmtLocal(x.ms)), t2=el('i',null,tfFmtTime(x.ms,state.tz)+' '+tfTzName(state.tz)); b.append(t1,t2); if(UPD&&!x.free&&String(x.id)===UPD){ b.classList.add('cur'); if(!state.slot) b.classList.add('on'); }
+    const t1=el('b',null,tfFmtLocal(x.ms)), t2=el('i',null,tfFmtTime(x.ms,state.tz)+' '+tfTzName(state.tz)); b.append(t1,t2); if(!x.free&&x.id){ const ic=tfIconEl(x.id); if(ic) b.appendChild(ic); } if(UPD&&!x.free&&String(x.id)===UPD){ b.classList.add('cur'); if(!state.slot) b.classList.add('on'); }
     if(!x.free&&x.id&&!x.pub&&x.ms>Date.now()+60000){ b.classList.add('dg'); b.draggable=true; b.addEventListener('dragstart',e=>{ state.drag=x; b.classList.add('dragging'); try{ e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain',x.id); }catch(z){} }); b.addEventListener('dragend',()=>{ state.drag=null; b.classList.remove('dragging'); slotBox.querySelectorAll('.drop').forEach(n=>n.classList.remove('drop')); }); }
     if((x.free||(x.id&&!x.pub))&&x.ms>Date.now()+60000){ b.addEventListener('dragover',e=>{ const d=state.drag; if(!d||d===x||state.moving) return; e.preventDefault(); try{ e.dataTransfer.dropEffect='move'; }catch(z){} b.classList.add('drop'); }); b.addEventListener('dragleave',()=>b.classList.remove('drop')); b.addEventListener('drop',e=>{ const d=state.drag; b.classList.remove('drop'); if(!d||d===x||state.moving) return; e.preventDefault(); e.stopPropagation(); x.free?slotMove(d,x):slotSwap(d,x); }); }
     if(!x.free){ if(!b.classList.contains('dg')) b.disabled=true; b.title=tr('Ocupado')+(x.label?': '+x.label:''); const tg=x.tags.slice(0,2); if(tg.length){ const c0=tfTagColor(tg[0]); if(c0){ b.classList.add('tgc'); b.style.setProperty('--tg',c0); } const w=el('span','tfm-tgs'); tg.forEach(t=>w.appendChild(tfTagPill(t,tagName(t)))); b.appendChild(w); } }
@@ -7656,6 +7667,7 @@ function openTfCal(){
     if(busy&&i.url){ c.href=i.url; c.target='_blank'; c.rel='noopener noreferrer'; }
     const t1=el('span','tfc-t1'); t1.appendChild(el('b',null,tfFmtLocal(i.ms))); if(busy){ const s=el('span','tfc-si '+i.kind); s.innerHTML=i.kind==='pub'?ICO_CK:ICO_CL; t1.appendChild(s); } if(i.kind==='pub'&&window.tfsChipStat){ const cs=window.tfsChipStat(i.id); if(cs){ t1.appendChild(el('span','tfc-hs',cs)); } } c.appendChild(t1);
     c.appendChild(el('i',null,tfFmtTime(i.ms,st.tz)+' '+tfTzName(st.tz)));
+    if(busy&&i.id){ const ic=tfIconEl(i.id); if(ic) c.appendChild(ic); }
     const tg=(i.tags||[])[0]; if(busy&&tg){ c.appendChild(tfTagPill(tg,tagName(tg))); const c0=tfTagColor(tg); if(c0){ c.classList.add('tgc'); c.style.setProperty('--tg',c0); } }
     c.title=busy?tr(i.kind==='pub'?'Publicada':'Programada')+(i.title?' · '+i.title:'')+(i.text?'\n'+i.text:'')+'\n'+tr('Abrir en Typefully'):tfFmtDay(i.ms,undefined,true)+' · '+tr('Hueco libre');
     const canDrag=i.kind==='sch'&&i.ms>Date.now()+60000, canDrop=(i.kind==='free'||i.kind==='sch')&&i.ms>Date.now()+60000;

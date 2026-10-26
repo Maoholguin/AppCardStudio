@@ -6130,6 +6130,7 @@ function archClose(){ const ov=$('archOv'); if(ov) ov.hidden=true; ARCH.open=fal
 async function archShow(keep){
   if(window.acsTfStatRefresh) window.acsTfStatRefresh();
   if(!ARCH.ready) await archLoad();
+  if(window.acsTfHeal) setTimeout(()=>{ try{ window.acsTfHeal(); }catch(e){} },800);
   let ov=$('archOv');
   if(!ov){
     ov=el('div','arch'); ov.id='archOv'; ov.setAttribute('role','dialog'); ov.setAttribute('aria-modal','true'); ov.setAttribute('aria-label',tr('Archivo'));
@@ -8280,7 +8281,7 @@ window.acsArchRepost=async function(rec){
         tf:{at:Date.now(),draft:d.id,url:d.private_url||tfUrl(d.id,c.ss),when:new Date(ms).toISOString(),nets:tfDraftNets(full),found:'import'},imported:true,noImage:noImg||undefined};
       await archPut(rec); if(window.acsSync) acsSync.pushPost(rec); ARCH.list.unshift(rec);
       TFSTAT.map[id]={status:stOf(d),ms,url:rec.tf.url,tags:tfTagsOf(d)}; delete TFSTAT.gone[id];
-      rec.imported=true; if(!noImg&&window.acsTfEnrich){ try{ btn.lastElementChild.textContent=tr('Leyendo la imagen…'); await window.acsTfEnrich(rec,true); }catch(e){} }
+      rec.imported=true; if(!noImg&&window.acsTfEnrich){ for(let i=0;i<2;i++){ try{ btn.lastElementChild.textContent=tr('Leyendo la imagen…'); await window.acsTfEnrich(rec,true); }catch(e){} if(rec.icon||(rec.state&&rec.enriched===2)||i===1) break; rec.state=undefined; await new Promise(r=>setTimeout(r,1200)); } }
       archPaintBtn(); toast(tr('Añadida al Archivo')+' · '+rec.name+(noImg?' · '+tr('no pude traer la imagen'):''),noImg?6000:3000); ARCH.openId=rec.id; archRender(); return rec;
     }catch(e){ console.log('ADDERR',e&&e.stack||e); toast(tr('No se pudo añadir al Archivo.'),4000); btn.disabled=false; btn.classList.remove('ld'); btn.lastElementChild.textContent=tr('Añadir al Archivo'); }
     finally{ adding.delete(id); }
@@ -8391,6 +8392,17 @@ Use "" or [] when something is not visible. Never guess.`;
   }
   window.acsTfEnsure=async function(rec){ if(rec.state) return true; if(!rec.imported) return false; return enrich(rec); };
   window.acsTfEnrich=enrich;
+  /* imported posts whose card image was never read (no icon, no data): read them in the background, one at a time, when the Archive opens */
+  let healing=false;
+  window.acsTfHeal=async function(){
+    if(healing) return; healing=true;
+    try{ const sm=await cap('sample'); if(!sm) return;
+      for(const rec of (ARCH.list||[]).slice()){
+        if(!rec.imported||rec.noImage||rec.icon||rec._healTried||!rec.media||(rec.state&&rec.enriched===2)) continue;
+        rec._healTried=true; try{ await enrich(rec,true); }catch(e){} await new Promise(r=>setTimeout(r,300));
+      }
+    } finally{ healing=false; }
+  };
 })();
 
 /* ====================================================================

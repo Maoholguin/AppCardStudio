@@ -5785,8 +5785,7 @@ function archPaintEdit(){
 window.__archPE=()=>{ try{ archPaintEdit(); }catch(e){} };
 async function archEdit(rec){
   if(exporting){ toast('Espera a que termine la exportación del video.'); return; }
-  let pre=null; if(rec.imported&&window.ACS_STANDALONE&&!rec.pgImgs){ try{ pre=window.open('','_blank'); }catch(e){} }   // opened now (inside the click) so the browser does not block it; pointed at the app page below
-  if(!rec.state&&window.acsTfEnsure){ const ok=await window.acsTfEnsure(rec); if(!ok){ if(pre) try{ pre.close(); }catch(e){} toast('Este post es antiguo: faltan los datos para editarlo.',4500); return; } }
+  if(!rec.state&&window.acsTfEnsure){ const ok=await window.acsTfEnsure(rec); if(!ok){ toast('Este post es antiguo: faltan los datos para editarlo.',4500); return; } }
   ARCH.repost=null;
   try{
     fetchRun++; S.fetching=null;
@@ -5812,9 +5811,9 @@ async function archEdit(rec){
       $('fPost').value=po.main||''; $('fThread').value=po.thread||''; paintModeUi();
     }
     ARCH.editId=rec.id; archPaintEdit(); scheduleRender(); window.scrollTo({top:0,behavior:'smooth'});
-    if(pre){ const n=normalizeUrl((S.links&&S.links.page)||''); if(n){ rec.pgImgs=true; window.__acsImgOnly={slug:n.slug,t:Date.now()}; standaloneOpen(n,pre); } else { try{ pre.close(); }catch(e){} } pre=null; }
+    if(rec.imported&&window.ACS_STANDALONE&&S.links&&S.links.page) setTimeout(()=>toast('Las imágenes salen de la card de Typefully (calidad menor). Usa «Traer imágenes de AlternativeTo» para tener las originales.',7500),2800);
     toast(po&&src.thumb?tr('Editando «{x}»',{x:rec.name}):'Este post es antiguo: se recuperaron los datos, pero faltan las imágenes y los textos.',po&&src.thumb?2600:6500);
-  }catch(e){ if(pre) try{ pre.close(); }catch(x){} toast('No se pudo abrir ese post para editar.',4200); }
+  }catch(e){ toast('No se pudo abrir ese post para editar.',4200); }
 }
 function archPaintBtn(){
   const b=$('archBtn'); if(!b) return; const n=ARCH.list.length;

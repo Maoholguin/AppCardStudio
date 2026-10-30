@@ -994,6 +994,23 @@ section.card[aria-labelledby]>header .btn.rld{height:30px;width:30px;padding:0;j
 .tfm-dpm{display:block;flex:none;width:34%;max-width:130px;margin-left:auto}
 .tfm-dpm img{display:block;width:100%;height:auto;border-radius:8px;box-shadow:0 2px 10px rgba(0,40,70,.25);border:1px solid var(--line)}
 }</style>
+<style>#tfSend.tfp{position:relative;overflow:hidden}
+#tfSend.tfp>:not(.tfp-ov){visibility:hidden}
+.tfp-ov{position:absolute;inset:0;display:flex;align-items:center;gap:12px;padding:0 14px;color:#fff}
+.tfp-f{position:absolute;left:0;top:0;bottom:0;width:0;background:rgba(255,255,255,.26);transition:width .25s ease}
+.tfp-t{position:relative;flex:1 1 auto;min-width:0;text-align:center;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+.tfp-x{position:relative;flex:none;font-size:12.5px;font-weight:600;padding:3px 9px;border-radius:6px;background:rgba(255,255,255,.2);cursor:pointer}.tfp-x:hover{background:rgba(255,255,255,.32)}
+@media (prefers-reduced-motion:reduce){.tfp-f{transition:none}}</style>
+<style>@media (max-width:640px){
+.preview .actions{flex-wrap:nowrap;gap:6px;align-items:center}
+.preview .actions .grow{flex:1 1 0;min-width:0}
+.preview .actions>.btn,.preview .actions>select{flex:none}
+#btnVideo #videoTxt{font-size:0}#btnVideo #videoTxt::after{content:"MP4";font-size:14px;font-weight:600}
+#btnDownload{font-size:0;padding:0 10px;gap:0}
+#btnCopy{font-size:0;padding:0 10px;width:38px;position:relative}
+#btnCopy::before{content:"";position:absolute;inset:0;margin:auto;width:17px;height:17px;background:currentColor;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='9' y='9' width='12' height='12' rx='2'/%3E%3Cpath d='M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='9' y='9' width='12' height='12' rx='2'/%3E%3Cpath d='M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1'/%3E%3C/svg%3E") center/contain no-repeat}
+#expScale{font-size:13px;padding:0 4px 0 8px}
+}</style>
 </head><body><div class="app">
   <header class="top">
     <button class="logo" id="logoHome" type="button" title="Empezar una card nueva" aria-label="Empezar una card nueva"></button>
@@ -5057,7 +5074,7 @@ function syncVideoPlayback(){
 function syncExportButtons(){
   const v=S.fmt==='video', has=hasVideoThumb();
   $('btnVideo').hidden=!v; $('btnVideo').disabled=!has||!!exporting;
-  $('videoTxt').textContent = tr(has ? 'Descargar video (MP4)' : 'Descargar video (sube un MP4 en «Captura»)')+(has&&vSpeed!==1?' · '+vSpeed+'×':'');
+  $('videoTxt').textContent = tr(has ? 'Descargar video (MP4)' : 'Descargar video (sube un MP4 en «Captura»)')+(has&&vSpeed!==1?' · '+vSpeed+'×':''); $('btnVideo').title=$('videoTxt').textContent;
   $('btnDownload').classList.remove('primary');
   $('btnDownload').disabled=!!exporting;
 }
@@ -5113,12 +5130,22 @@ function initVideoUi(){
 
 /* ---------- export: WebCodecs (H.264) + mp4-muxer; MediaRecorder as a fallback ---------- */
 let exporting=null;
+var TFB=false;
+function tfBtnProg(frac,txt){
+  const b=$('tfSend'); if(!b) return false; let ov=b.querySelector('.tfp-ov');
+  if(!ov){ b.classList.add('tfp'); ov=document.createElement('span'); ov.className='tfp-ov'; ov.innerHTML='<i class="tfp-f"></i><span class="tfp-t"></span><span class="tfp-x" role="button" tabindex="0"></span>'; const x=ov.querySelector('.tfp-x'); x.textContent=tr('Cancelar');
+    const stop=e=>{ e.stopPropagation(); e.preventDefault(); if(exporting){ exporting.cancel=true; try{ exporting.onCancel&&exporting.onCancel(); }catch(er){} } };
+    x.addEventListener('click',stop); x.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' ') stop(e); }); b.appendChild(ov); }
+  const full=tr(txt||''); ov.querySelector('.tfp-f').style.width=Math.round(Math.max(0,Math.min(1,frac))*100)+'%'; ov.querySelector('.tfp-t').textContent=full.split(/\s{2,}|\s\(/)[0].trim(); b.title=full; return true;
+}
+function tfBtnEnd(){ const b=$('tfSend'); if(!b) return; b.classList.remove('tfp'); const ov=b.querySelector('.tfp-ov'); if(ov) ov.remove(); b.removeAttribute('title'); }
 function showProgress(frac,txt){
+  if(TFB&&tfBtnProg(frac,txt)){ $('expProg').hidden=true; return; }
   const box=$('expProg'); box.hidden=false; $('expBar').style.width=Math.round(Math.max(0,Math.min(1,frac))*100)+'%'; $('expTxt').textContent=tr(txt||'');
 }
 var expLast=null, expDiag='';
-function paintDiag(){ if(expLast&&expDiag){ const e=$('expTxt'); if(e) e.textContent=expLast[1]+'  ·  '+expDiag; } }
-function hideProgress(){ expLast=null; expDiag='';  $('expProg').hidden=true; }
+function paintDiag(){ if(TFB) return; if(expLast&&expDiag){ const e=$('expTxt'); if(e) e.textContent=expLast[1]+'  ·  '+expDiag; } }
+function hideProgress(){ expLast=null; expDiag='';  $('expProg').hidden=true; tfBtnEnd(); }
 async function pickH264(W,H,bitrate){
   if(!window.VideoEncoder||!window.Mp4Muxer) return null;
   const mbs=Math.ceil(W/16)*Math.ceil(H/16), lvl=mbs<=8192?'28':(mbs<=22080?'33':'34');
@@ -7484,7 +7511,7 @@ async function tfStart(){
   if(!ghCfg()){ toast('Primero conecta GitHub (menú Conexiones): hace falta para subir la imagen.',4200); openGhDialog(); return; }
   if(typeof exporting!=='undefined'&&exporting){ toast('Espera a que termine la exportación del video.'); return; }
   const need=tfNeedsSave(archCurrent());
-  const go=async()=>{ if(need){ await archSave(); } const rec=archCurrent(); if(!rec||tfNeedsSave(rec)){ toast('No se pudo guardar la card en el archivo.',4200); return; } openTfModal(rec,{editor:true}); };
+  const go=async()=>{ if(need){ TFB=true; try{ await archSave(); } finally{ TFB=false; tfBtnEnd(); } } const rec=archCurrent(); if(!rec||tfNeedsSave(rec)){ toast('No se pudo guardar la card en el archivo.',4200); return; } openTfModal(rec,{editor:true}); };
   if(need) tfGate(btn,need==='new'?'¿Guardar y enviar?':'¿Actualizar y enviar?',go); else go();
 }
 function ensureTfBtn(n){
@@ -8878,7 +8905,7 @@ window.acsFsSync=fsStart;
 /* Editing a post that is still scheduled / draft on Typefully: the main Typefully button becomes "Update on Typefully" (same as Save, but always asks to update that post) */
 (function(){
   if(!window.ACS_STANDALONE) return;
-  window.acsTfUpdateNow=async function(){ window.__acsForceUpd=true; await archSave(); setTimeout(()=>{ window.__acsForceUpd=false; },4000); };
+  window.acsTfUpdateNow=async function(){ window.__acsForceUpd=true; TFB=true; try{ await archSave(); } finally{ TFB=false; tfBtnEnd(); } setTimeout(()=>{ window.__acsForceUpd=false; },4000); };
   let last='';
   setInterval(()=>{
     const b=document.getElementById('tfSend'); if(!b) return; let upd=false;
@@ -8910,6 +8937,9 @@ window.acsFsSync=fsStart;
       else if(!want&&stuck){ row.classList.remove('tf-float'); row.style.minHeight=''; stuck=false; } };
     const q=()=>{ if(!raf) raf=requestAnimationFrame(upd); };
     addEventListener('scroll',q,{passive:true}); addEventListener('resize',q); setInterval(q,1000); }catch(e){}
+
+  // móvil: los botones de descarga/copiar quedan como iconos; el texto pasa a tooltip
+  try{ const ttl=()=>{ ['btnDownload','btnCopy'].forEach(id=>{ const b=document.getElementById(id); if(!b) return; const t=b.textContent.trim(); if(t&&b.title!==t){ b.title=t; b.setAttribute('aria-label',t); } }); }; ttl(); setInterval(ttl,1500); }catch(e){}
 boot().then(function(){ if(window.hashImport) hashImport(); });
 })();
 

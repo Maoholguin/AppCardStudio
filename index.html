@@ -1136,6 +1136,19 @@ a.tl-d{text-decoration:none}
 .tl-nb span{color:var(--muted)}
 @media (max-width:640px){.tl-h .tl-nb{margin-left:0}}
 </style>
+<style>
+.tl-ring .ar{animation:none;opacity:1}
+.tl-cnt{position:absolute;z-index:4;transform:translateX(-50%);font-size:9.5px;line-height:13px;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--brand-fg);background:var(--brand);border-radius:7px;padding:0 5px;pointer-events:none;opacity:1;animation:none}
+.tl-sc.cd{padding-top:20px}
+</style>
+<style>
+.tl-nb input{width:30px;height:18px;min-height:0;min-width:0;padding:0;border:0;margin:0;flex:none;background:var(--line-2)}
+.tl-nb input:checked{background:var(--brand)}
+.tl-nb{align-self:center;line-height:1;flex:none}
+.tl-h{align-items:center}
+.tl-h .tl-clk{line-height:1.2}
+.tl-sc{overscroll-behavior-x:contain}
+</style>
 </head><body><div class="app">
   <header class="top">
     <button class="logo" id="logoHome" type="button" title="Empezar una card nueva" aria-label="Empezar una card nueva"></button>
@@ -6454,9 +6467,10 @@ function tlHourLbl(h){ try{ return new Date(2000,0,1,h).toLocaleTimeString(undef
 const TL_NEWS='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h13a1 1 0 0 1 1 1v13H6a2 2 0 0 1-2-2z"/><path d="M18 9h2v8a2 2 0 0 1-2 2M8 9h6M8 13h6M8 16h3"/></svg>';
 const TL_CAP=12*36e5;
 function tlRingSet(s){ const ms=+s.dataset.ms, f=Math.max(0,Math.min(1,(ms-Date.now())/TL_CAP)), c=s.querySelector('.a'); if(c){ const C=2*Math.PI*14; c.setAttribute('stroke-dashoffset',String(C*(1-f))); } s.classList.toggle('done',ms<=Date.now()); }
-function tlRingEl(ms,left,top){ const s=document.createElementNS('http://www.w3.org/2000/svg','svg'); s.setAttribute('class','tl-ring'); s.setAttribute('viewBox','0 0 44 44'); s.dataset.ms=String(ms); s.style.setProperty('--d',-(Date.now()%10000)+'ms'); const C=2*Math.PI*14, id='tlp'+(++TL_PID);
-  s.innerHTML='<circle class="t" cx="22" cy="22" r="14"/><g class="ar"><circle class="a" cx="22" cy="22" r="14" stroke-dasharray="'+C+'" stroke-dashoffset="0" transform="rotate(-90 22 22)"/></g><g class="tx"><g class="rot"><path id="'+id+'" d="M7 22a15 15 0 1 1 30 0a15 15 0 1 1 -30 0" fill="none" stroke="none"/><text><textPath href="#'+id+'"></textPath></text></g></g>';
-  s.style.left=left; s.style.top=(top-10)+'px'; tlRingSet(s); tlRingTxt(s); return s; }
+function tlRingEl(ms,left,top){ const s=document.createElementNS('http://www.w3.org/2000/svg','svg'); s.setAttribute('class','tl-ring'); s.setAttribute('viewBox','0 0 44 44'); s.dataset.ms=String(ms); const C=2*Math.PI*14;
+  s.innerHTML='<circle class="t" cx="22" cy="22" r="14"/><g class="ar"><circle class="a" cx="22" cy="22" r="14" stroke-dasharray="'+C+'" stroke-dashoffset="0" transform="rotate(-90 22 22)"/></g>';
+  s.style.left=left; s.style.top=(top-10)+'px'; tlRingSet(s); return s; }
+function tlCntEl(ms,left,top){ const e=el('span','tl-cnt'); e.dataset.ms=String(ms); e.textContent=tlCntTxt(ms); e.style.left=left; e.style.top=(top-17)+'px'; return e; }
 function tlLeft(ms){ const m=Math.max(0,Math.round((ms-Date.now())/6e4)); if(m<60) return m+' min'; if(m<1440) return Math.floor(m/60)+' h'+(m%60?' '+(m%60)+' min':''); return Math.floor(m/1440)+' d'+(Math.floor(m%1440/60)?' '+Math.floor(m%1440/60)+' h':''); }
 setInterval(()=>{ document.querySelectorAll('.tl-ring').forEach(tlRingSet); },30000);
 function tlDot(b,name,src,news){ const ph=()=>{ b.classList.add('ph'); if(news){ b.classList.add('news'); b.innerHTML=TL_NEWS; } else b.textContent=(name||'?').trim().charAt(0).toUpperCase(); }; if(src){ const i=document.createElement('img'); i.alt=''; i.referrerPolicy='no-referrer'; i.onerror=()=>{ i.remove(); ph(); }; i.src=src; b.appendChild(i); } else ph(); }
@@ -6481,7 +6495,7 @@ function tlRender(box){
     b.addEventListener('click',()=>{ ARCH.filter='all'; ARCH.status='all'; ARCH.q=''; ARCH.openId=r.id; ARCH.coll.clear(); const q=document.querySelector('#archOv .arch-q'); if(q) q.value=''; Promise.resolve(archShow(true)).then(()=>setTimeout(()=>{ const o=document.querySelector('#archOv .pc.open'); if(o) o.scrollIntoView({block:'center',behavior:'smooth'}); },60)); });
     return b; }; });
   const narrow=(box.clientWidth||600)<520;
-  box.appendChild(tlBuild({its,PPH:narrow?18:26,start,end,step:narrow?6:3,key:box.id==='dashTl'?'dash':'arch',cls:'tl-wrap',at:0.3,onRef:setHd}));
+  box.appendChild(tlBuild({its,PPH:narrow?18:26,start,end,step:narrow?6:3,key:box.id==='dashTl'?'dash':'arch',cls:'tl-wrap',at:0.3,onRef:setHd,cnt:true,rebuild:()=>tlRender(box)}));
 }
 function tlRefreshAll(){ try{ tlRender($('dashTl')); const ov=$('archOv'); if(ov&&!ov.hidden) tlRender(ov.querySelector('.arch-tl')); }catch(e){} }
 function archTimeline(ov){ tlRender(ov.querySelector('.arch-tl')); }
@@ -6493,7 +6507,7 @@ function acsTlInit(n){
   go(); setTimeout(tlRefreshAll,2500); setTimeout(tlRefreshAll,7000);
 }
 /* compact strip for the Typefully calendar: scrolls sideways, a few hours back and some days ahead */
-const TL_SCR={};
+const TL_SCR={}, TL_ZM={};
 function tlNewsOn(){ try{ return localStorage.getItem('acs.tlNews')==='1'; }catch(e){ return false; } }
 function tlLinked(){ const set=new Set(); try{ (ARCH.list||[]).forEach(r=>{ if(r.tf&&r.tf.draft!=null) set.add(String(r.tf.draft)); }); }catch(e){} return set; }
 function tlDayLbl(ms){ const a=new Date(); a.setHours(0,0,0,0); const b=new Date(ms); b.setHours(0,0,0,0); const d=Math.round((b-a)/864e5); return d===0?tr('Hoy'):d===1?tr('Mañana'):d===-1?tr('Ayer'):tfFmtDay(ms,undefined,true); }
@@ -6502,19 +6516,20 @@ function tlNewsBtn(onChange){ const l=el('label','tgl tl-nb'); const i=el('input
   i.addEventListener('change',()=>{ try{ localStorage.setItem('acs.tlNews',i.checked?'1':'0'); }catch(e){} try{ tlRefreshAll(); }catch(e){} if(onChange) onChange(); }); return l; }
 function tlCntTxt(ms){ const t=Math.max(0,Math.round((ms-Date.now())/1000)); if(t<=0) return tr('Ahora'); const d=Math.floor(t/86400), h=Math.floor(t%86400/3600), m=Math.floor(t%3600/60), sc=t%60; if(d) return d+'d '+h+'h'; const z=n=>String(n).padStart(2,'0'); return h?h+':'+z(m)+':'+z(sc):z(m)+':'+z(sc); }
 let TL_PID=0;
-function tlRingTxt(s){ const t=tlCntTxt(+s.dataset.ms), str=t, tx=s.querySelector('text'); if(!tx) return; const tp=tx.firstChild; if(tp.textContent!==str) tp.textContent=str; }
-setInterval(()=>{ document.querySelectorAll('.tl-ring').forEach(tlRingTxt); },1000);
+function tlRingTxt0(s){ const t=tlCntTxt(+s.dataset.ms), str=t, tx=s.querySelector('text'); if(!tx) return; const tp=tx.firstChild; if(tp.textContent!==str) tp.textContent=str; }
+setInterval(()=>{ document.querySelectorAll('.tl-cnt').forEach(e=>{ e.textContent=tlCntTxt(+e.dataset.ms); }); },1000);
 /* generic scrollable timeline: items [{ms,kind,nx,mk(): element}] ; PPH px per hour */
+let tlZt=0;
 function tlBuild(o){
-  const now=Date.now(), H=36e5, PPH=o.PPH, start=o.start, end=o.end, W=(end-start)/H*PPH;
+  const now=Date.now(), H=36e5, ZM=TL_ZM[o.key]||1, PPH=o.PPH*ZM, start=o.start, end=o.end, W=(end-start)/H*PPH; const stp=[1,2,3,6,12,24].find(k=>k*PPH>=58)||24;
   const its=o.its; its.forEach(i=>{ i.px=()=>(i.ms-start)/H*PPH; });
   const nl=tlLanes(its,W,o.gap||26);
   const wrap=el('div',o.cls||'tl-strip'); const sc=el('div','tl-sc'); const tr_=el('div','tl-tr'); tr_.style.width=W+'px'; tr_.style.height=(nl*28+30)+'px';
   tr_.appendChild(el('div','tl-line'));
   const pw=el('div','tl-past'); pw.style.width=Math.max(0,(now-start)/H*PPH)+'px'; tr_.appendChild(pw);
-  for(let t=start;t<=end;t+=H){ const d=new Date(t), h=d.getHours(); if(h%o.step) continue; const l=el('span','tl-tk',h===0?tfFmtDay(t):tlHourLbl(h)); if(h===0) l.classList.add('dy'); l.style.left=((t-start)/H*PPH)+'px'; tr_.appendChild(l); }
+  for(let t=start;t<=end;t+=H){ const d=new Date(t), h=d.getHours(); if(h%stp) continue; const l=el('span','tl-tk',h===0?tfFmtDay(t):tlHourLbl(h)); if(h===0) l.classList.add('dy'); l.style.left=((t-start)/H*PPH)+'px'; tr_.appendChild(l); }
   const nw=el('div','tl-now'); nw.style.left=((now-start)/H*PPH)+'px'; nw.title=tr('Ahora')+' · '+tfFmtLocal(now); tr_.appendChild(nw);
-  its.forEach(i=>{ const b=i.mk(); const lx=((i.ms-start)/H*PPH)+'px', ty=2+i.ln*28; b.style.left=lx; b.style.top=ty+'px'; tr_.appendChild(b); if(i.nx){ tr_.appendChild(tlRingEl(i.ms,lx,ty)); sc.classList.add('cd'); } });
+  its.forEach(i=>{ const b=i.mk(); const lx=((i.ms-start)/H*PPH)+'px', ty=2+i.ln*28; b.style.left=lx; b.style.top=ty+'px'; tr_.appendChild(b); if(i.nx){ tr_.appendChild(tlRingEl(i.ms,lx,ty)); if(o.cnt){ tr_.appendChild(tlCntEl(i.ms,lx,ty)); sc.classList.add('cd'); } } });
   sc.appendChild(tr_); wrap.appendChild(sc);
   const key=o.key; let usr=false; ['mousedown','touchstart','wheel'].forEach(ev=>sc.addEventListener(ev,()=>{ usr=true; },{passive:true})); sc.addEventListener('scroll',()=>{ if(usr) TL_SCR[key]=sc.scrollLeft; },{passive:true});
   let dn=false,x0=0,s0=0,mv=false;
@@ -6522,7 +6537,13 @@ function tlBuild(o){
   window.addEventListener('mousemove',e=>{ if(!dn) return; const dx=e.clientX-x0; if(Math.abs(dx)>4){ mv=true; sc.classList.add('drag'); } if(mv) sc.scrollLeft=s0-dx; });
   window.addEventListener('mouseup',()=>{ if(dn){ dn=false; sc.classList.remove('drag'); } });
   sc.addEventListener('click',e=>{ if(mv){ e.preventDefault(); e.stopPropagation(); mv=false; } },true);
-  sc.addEventListener('wheel',e=>{ if(Math.abs(e.deltaX)<Math.abs(e.deltaY)&&e.shiftKey){ sc.scrollLeft+=e.deltaY; e.preventDefault(); } },{passive:false});
+  sc.addEventListener('wheel',e=>{
+    if(e.shiftKey&&Math.abs(e.deltaX)<Math.abs(e.deltaY)){ sc.scrollLeft+=e.deltaY; e.preventDefault(); return; }
+    if(!(e.ctrlKey||Math.abs(e.deltaY)>=Math.abs(e.deltaX))||!o.rebuild) return;
+    e.preventDefault(); const r=sc.getBoundingClientRect(), cx=e.clientX-r.left; const nz=Math.max(0.25,Math.min(5,(TL_ZM[key]||1)*Math.exp(-e.deltaY*(e.ctrlKey?0.01:0.0018)))); if(Math.abs(nz-(TL_ZM[key]||1))<0.001) return;
+    const t=start+(sc.scrollLeft+cx)/PPH*H, np=o.PPH*nz; TL_ZM[key]=nz; TL_SCR[key]=Math.max(0,(t-start)/H*np-cx);
+    if(!tlZt){ tlZt=requestAnimationFrame(()=>{ tlZt=0; o.rebuild(); }); }
+  },{passive:false});
   const go=()=>{ sc.scrollLeft=(TL_SCR[key]!=null)?TL_SCR[key]:Math.max(0,(now-start)/H*PPH-sc.clientWidth*(o.at||0.18)); };
   const ref=()=>{ if(o.onRef) o.onRef(start+(sc.scrollLeft+sc.clientWidth*(o.at||0.18))/PPH*H); }; let tk=false; sc.addEventListener('scroll',()=>{ if(tk) return; tk=true; requestAnimationFrame(()=>{ tk=false; ref(); }); },{passive:true});
   let tries=0; const go2=()=>{ if(!sc.clientWidth&&tries++<25){ setTimeout(go2,120); return; } go(); ref(); }; go(); setTimeout(go2,0);
@@ -6540,7 +6561,7 @@ function tlStrip(st){
   const hd=el('div','tl-sh'); const lb=el('b',null,tr('Hoy')), dm=el('span','dim'); const tx=el('div','tl-st'); tx.append(lb,dm); hd.appendChild(tx);
   let box=null; hd.appendChild(tlNewsBtn(()=>{ if(box&&box.parentNode) box.replaceWith(tlStrip(st)); }));
   const setHd=ms=>{ lb.textContent=tlDayLbl(ms); dm.textContent=tlCounts(all,ms); }; setHd(now);
-  box=tlBuild({its,PPH:20,start,end,step:6,key:'cal',cls:'tl-strip',onRef:setHd}); box.insertBefore(hd,box.firstChild);
+  box=tlBuild({its,PPH:20,start,end,step:6,key:'cal',cls:'tl-strip',onRef:setHd,rebuild:()=>{ if(box.parentNode) box.replaceWith(tlStrip(st)); }}); box.insertBefore(hd,box.firstChild);
   return box;
 }
 function archRender(){

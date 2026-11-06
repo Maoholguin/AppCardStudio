@@ -4653,7 +4653,7 @@ const uniq=(a)=>[...new Set(a.filter(Boolean))];
 /* ---------- image URLs (AlternativeTo's own image CDN only) ---------- */
 const bigShot=(u)=>(u||'').replace(/\/s\/\d+x\d+\/[a-z0-9]+\//i,'/s/1200x1200/jpeg/');
 const bigIcon=(u)=>(u||'').replace(/\/icons\/\d+\/(?:(jpeg|png|webp|avif)\/)?/i,(m,f)=>f?'/icons/280/png/':'/icons/280/');
-const IMG_OK=/^https:\/\/img\.alternativeto\.net\/(?:s\/\d+x\d+\/[a-z0-9]+\/|icons\/\d+\/(?:[a-z0-9]+\/)?)[\w.%~-]+$/i;
+const IMG_OK=/^https:\/\/img\.alternativeto\.net\/(?:s\/\d+x\d+\/[a-z0-9]+\/|icons\/(?:\d+\/)?(?:[a-z0-9]+\/)?)[\w.%~-]+$/i;
 
 /* ---------- parser A: accessibility tree + page text (Cowork browser) ---------- */
 function parseTreeNodes(raw){
@@ -4753,11 +4753,16 @@ function parseDoc(doc){
   const pa=sec('Popular alternatives'); if(pa) d.alts=uniq(pa.map(li=>{ const a=li.querySelector('a'); return a?T(a):T(li); }));
   // images: URLs of the hi-res originals (the saved page itself can't show them)
   const lastSrc=(i)=>{ const ss=(i.getAttribute('srcset')||'').split(',').map(x=>x.trim().split(/\s+/)[0]).filter(Boolean); return ss.pop()||i.getAttribute('src')||''; };
-  const ic=[...doc.querySelectorAll('img')].find(i=>(i.getAttribute('alt')||'')===d.name+' icon');
+  const CDN=/img\.alternativeto\.net\/icons\//i, hasCdn=i=>CDN.test((i.getAttribute('src')||'')+' '+(i.getAttribute('srcset')||''));
+  const ic=[...doc.querySelectorAll('img')].find(i=>(i.getAttribute('alt')||'')===d.name+' icon')||[...doc.querySelectorAll('img')].find(i=>/\bicon\b|logo/i.test(i.getAttribute('alt')||'')&&hasCdn(i))||[...doc.querySelectorAll('h1 ~ * img, main img')].find(hasCdn);
   if(ic){ const u=lastSrc(ic); if(u) d.iconUrl=bigIcon(u);
     const al=[]; const add=x=>{ x=String(x||'').trim(); if(x&&al.indexOf(x)<0) al.push(x); };
     add(ic.getAttribute('src')); (ic.getAttribute('srcset')||'').split(',').forEach(x=>add(x.trim().split(/\s+/)[0]));
     const pc=ic.closest&&ic.closest('picture'); if(pc) pc.querySelectorAll('source').forEach(so=>(so.getAttribute('srcset')||'').split(',').forEach(x=>add(x.trim().split(/\s+/)[0])));
+    try{ const stem=(u)=>{ const f=String(u||'').split('?')[0].split('/').pop()||''; return f.replace(/\.[a-z0-9]+$/i,''); };
+      const stems=al.map(stem).filter(x=>x.length>5);
+      if(stems.length){ const html=doc.documentElement.outerHTML.replace(/&amp;/g,'&');
+        (html.match(/https:\/\/img\.alternativeto\.net\/icons\/[^"'\s,)<>]+/gi)||[]).forEach(u=>{ if(stems.indexOf(stem(u))>=0) add(u); }); } }catch(e){}
     d.iconAlts=al; }
   const shots=[], seen=new Set();
   doc.querySelectorAll('[data-testid^="image-collection"] img').forEach(i=>{ const u=bigShot(lastSrc(i)); const k=u.split('/').pop(); if(u&&!seen.has(k)){ seen.add(k); shots.push(u); } });
@@ -7375,9 +7380,11 @@ async function bestIcon(main){
   alts.forEach(u=>{ if(/\.svg(?:$|\?)/i.test(u)||/\/icons\/\d+\/svg\//i.test(u)) add(u); });
   const base=alts[0]||main||'';
   if(/\/icons\/\d+\//i.test(base)){ ['svg','png'].forEach(f=>{ if(f==='svg'&&!/\.svg(?:$|\?)/i.test(base)) return; add(base.replace(/\/icons\/\d+\/(?:[a-z0-9]+\/)?/i,'/icons/280/'+f+'/')); }); [1024,512].forEach(n=>add(base.replace(/\/icons\/\d+\/(?:[a-z0-9]+\/)?/i,'/icons/'+n+'/png/'))); }
+  { const sv=[base,main].filter(Boolean).map(u=>u.split('?')[0]).filter(u=>/\/icons\//i.test(u));
+    sv.forEach(u=>{ const noExt=u.replace(/\.[a-z0-9]+$/i,''); add(noExt+'.svg'); add(u.replace(/\/icons\/\d+\/(?:[a-z0-9]+\/)?/i,'/icons/svg/').replace(/\.[a-z0-9]+$/i,'.svg')); }); }
   add(main);
   let best=null;
-  for(const u of out.slice(0,6)){
+  for(const u of out.slice(0,10)){
     try{
       const isSvgName=/\.svg(?:$|\?)/i.test(u); let blob=null;
       try{ const r=await fetch(u); if(r.ok) blob=await r.blob(); }catch(e){}

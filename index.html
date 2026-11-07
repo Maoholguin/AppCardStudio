@@ -4653,7 +4653,7 @@ const uniq=(a)=>[...new Set(a.filter(Boolean))];
 /* ---------- image URLs (AlternativeTo's own image CDN only) ---------- */
 const bigShot=(u)=>(u||'').replace(/\/s\/\d+x\d+\/[a-z0-9]+\//i,'/s/1200x1200/jpeg/');
 const bigIcon=(u)=>(u||'').replace(/\/icons\/\d+\/(?:(jpeg|png|webp|avif)\/)?/i,(m,f)=>f?'/icons/280/png/':'/icons/280/');
-const IMG_OK=/^https:\/\/img\.alternativeto\.net\/(?:s\/\d+x\d+\/[a-z0-9]+\/|icons\/(?:\d+\/)?(?:[a-z0-9]+\/)?)[\w.%~-]+$/i;
+const IMG_OK=/^https:\/\/img\.alternativeto\.net\/(?:s\/\d+x\d+\/[a-z0-9]+\/|icons\/(?:\d+\/)?(?:[a-z0-9]+\/)?)[\w.%~-]+(?:\?[\w=&.%~-]*)?$/i;
 
 /* ---------- parser A: accessibility tree + page text (Cowork browser) ---------- */
 function parseTreeNodes(raw){
@@ -7377,10 +7377,11 @@ async function importFromPage(html,pageUrl){
 /* the app icon: look for the best version (original SVG first, then the biggest raster the CDN gives) */
 async function bestIcon(main){
   const alts=(S.links&&S.links.iconAlts)||[], out=[], add=u=>{ if(u&&IMG_OK.test(u)&&out.indexOf(u)<0) out.push(u); };
-  alts.forEach(u=>{ if(/\.svg(?:$|\?)/i.test(u)||/\/icons\/\d+\/svg\//i.test(u)) add(u); });
+  alts.forEach(u=>{ if(/\.svg(?:$|\?)/i.test(u)) add(u.replace(/\/icons\/\d+\//i,'/icons/280/')); else if(/\/icons\/\d+\/svg\//i.test(u)) add(u); });
   const base=alts[0]||main||'';
   if(/\/icons\/\d+\//i.test(base)){ ['svg','png'].forEach(f=>{ if(f==='svg'&&!/\.svg(?:$|\?)/i.test(base)) return; add(base.replace(/\/icons\/\d+\/(?:[a-z0-9]+\/)?/i,'/icons/280/'+f+'/')); }); [1024,512].forEach(n=>add(base.replace(/\/icons\/\d+\/(?:[a-z0-9]+\/)?/i,'/icons/'+n+'/png/'))); }
   { const sv=[base,main].filter(Boolean).map(u=>u.split('?')[0]).filter(u=>/\/icons\//i.test(u));
+    sv.forEach(u=>{ if(/\.svg(?:$|\?)/i.test(u)){ add(u.replace(/\/icons\/\d+\//i,'/icons/280/')); } });
     sv.forEach(u=>{ const noExt=u.replace(/\.[a-z0-9]+$/i,''); add(noExt+'.svg'); add(u.replace(/\/icons\/\d+\/(?:[a-z0-9]+\/)?/i,'/icons/svg/').replace(/\.[a-z0-9]+$/i,'.svg')); }); }
   add(main);
   let best=null;
@@ -7394,9 +7395,9 @@ async function bestIcon(main){
       if(svg&&!/svg/i.test(blob.type)) blob=new Blob([blob],{type:'image/svg+xml'});
       if(!/^image\//.test(blob.type)) continue;
       const obj=await loadImageSrc(URL.createObjectURL(blob),u.split('/').pop(),{key:u});
-      obj.score=svg?1e6:obj.w; obj.lbl=svg?' · SVG':' · '+obj.w+'px';
+      const isv=svg||isSvgName; obj.score=isv?1e6:obj.w; obj.lbl=isv?' · SVG':' · '+obj.w+'px';
       if(!best||obj.score>best.score) best=obj;
-      if(svg) break;
+      if(isv) break;
     }catch(e){}
   }
   if(!best) throw new Error('sin imagen');

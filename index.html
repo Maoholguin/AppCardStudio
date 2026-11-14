@@ -4523,26 +4523,97 @@ function animDurMs(u8,kind){
   else if(kind==='image/webp'){ let i=12; while(i<u8.length-8){ const L=(u8[i+4]|u8[i+5]<<8|u8[i+6]<<16|u8[i+7]<<24)>>>0; if(String.fromCharCode(u8[i],u8[i+1],u8[i+2],u8[i+3])==='ANMF'){ const d=u8[i+8+12]|u8[i+8+13]<<8|u8[i+8+14]<<16; ms+=d<20?100:d; } i+=8+L+(L&1); } }
   return ms;
 }
+/* own decoders for animated WebP and GIF, so the conversion does not depend on the browser's ImageDecoder (Safari) nor on animating a hidden <img> (which Safari freezes) */
+function animLzw(data,mc,n){
+  const out=new Uint8Array(n), clear=1<<mc, eoi=clear+1; let size=mc+1, next=eoi+1, mask=(1<<size)-1;
+  const pre=new Int16Array(4096), suf=new Uint8Array(4096), stk=new Uint8Array(4097); let bits=0,acc=0,p=0,o=0,old=-1,first=0;
+  for(let i=0;i<clear;i++) suf[i]=i;
+  while(o<n){
+    while(bits<size){ if(p>=data.length) return out; acc|=data[p++]<<bits; bits+=8; }
+    let code=acc&mask; acc>>=size; bits-=size;
+    if(code===clear){ size=mc+1; next=eoi+1; mask=(1<<size)-1; old=-1; continue; } if(code===eoi) break;
+    if(old===-1){ out[o++]=suf[code]; old=code; first=code; continue; }
+    const inc=code; let sp=0; if(code>=next){ stk[sp++]=first; code=old; }
+    while(code>=clear){ stk[sp++]=suf[code]; code=pre[code]; } first=suf[code]; stk[sp++]=first;
+    if(next<4096){ pre[next]=old; suf[next]=first; next++; if((next&mask)===0&&size<12){ size++; mask=(1<<size)-1; } }
+    old=inc; while(sp>0&&o<n) out[o++]=stk[--sp];
+  }
+  return out;
+}
+function openGifJs(buf){
+  const u=new Uint8Array(buf); if(String.fromCharCode(u[0],u[1],u[2])!=='GIF') return null;
+  const CW=u[6]|u[7]<<8, CH=u[8]|u[9]<<8; let o=13, gct=null;
+  if(u[10]&0x80){ const n=2<<(u[10]&7); gct=u.subarray(o,o+n*3); o+=n*3; }
+  const fr=[]; let gce={d:100,disp:0,tr:-1};
+  while(o<u.length){
+    const b=u[o++]; if(b===0x3B) break;
+    if(b===0x21){ const lab=u[o++]; if(lab===0xF9){ const fl=u[o+1]; gce={d:(u[o+2]|u[o+3]<<8)*10,disp:(fl>>2)&7,tr:(fl&1)?u[o+4]:-1}; } let sz=u[o++]; while(sz){ o+=sz; sz=u[o++]; } continue; }
+    if(b===0x2C){
+      const x=u[o]|u[o+1]<<8, y=u[o+2]|u[o+3]<<8, w=u[o+4]|u[o+5]<<8, h=u[o+6]|u[o+7]<<8, fl=u[o+8]; o+=9; let ct=gct;
+      if(fl&0x80){ const n=2<<(fl&7); ct=u.subarray(o,o+n*3); o+=n*3; }
+      const mc=u[o++]; const parts=[]; let tot=0, sz=u[o++]; while(sz){ parts.push(u.subarray(o,o+sz)); tot+=sz; o+=sz; sz=u[o++]; }
+      const data=new Uint8Array(tot); let q=0; parts.forEach(a=>{ data.set(a,q); q+=a.length; });
+      fr.push({x,y,w,h,il:!!(fl&0x40),ct,mc,data,gce}); gce={d:100,disp:0,tr:-1};
+    } else break;
+  }
+  if(!fr.length||!CW||!CH) return null;
+  const acv=document.createElement('canvas'); acv.width=CW; acv.height=CH; const g=acv.getContext('2d',{willReadFrequently:true});
+  return {w:CW,h:CH,n:fr.length,async*iter(){
+    for(const f of fr){
+      const idx=animLzw(f.data,f.mc,f.w*f.h), id=g.createImageData(f.w,f.h), d=id.data, ct=f.ct||new Uint8Array(768);
+      const rows=[]; if(f.il){ [[0,8],[4,8],[2,4],[1,2]].forEach(([s0,st])=>{ for(let r=s0;r<f.h;r+=st) rows.push(r); }); } else for(let r=0;r<f.h;r++) rows.push(r);
+      for(let i=0;i<f.h;i++){ const dr=rows[i]; for(let c=0;c<f.w;c++){ const v=idx[i*f.w+c], k=(dr*f.w+c)*4; if(v===f.gce.tr){ d[k+3]=0; } else { d[k]=ct[v*3]; d[k+1]=ct[v*3+1]; d[k+2]=ct[v*3+2]; d[k+3]=255; } } }
+      const saved=f.gce.disp===3?g.getImageData(0,0,CW,CH):null;
+      const tmp=document.createElement('canvas'); tmp.width=f.w; tmp.height=f.h; tmp.getContext('2d').putImageData(id,0,0); g.drawImage(tmp,f.x,f.y);
+      yield {img:acv,dur:f.gce.d<20?100:f.gce.d,done:()=>{ if(f.gce.disp===2) g.clearRect(f.x,f.y,f.w,f.h); else if(saved) g.putImageData(saved,0,0); }};
+    }
+  }};
+}
+function openWebpJs(buf){
+  const u=new Uint8Array(buf), dv=new DataView(buf); const rd=o=>u[o]|u[o+1]<<8|u[o+2]<<16, tag=o=>String.fromCharCode(u[o],u[o+1],u[o+2],u[o+3]);
+  if(tag(0)!=='RIFF'||tag(8)!=='WEBP'||tag(12)!=='VP8X') return null;
+  const CW=rd(24)+1, CH=rd(27)+1, fr=[]; let o=12;
+  while(o<u.length-8){ const L=dv.getUint32(o+4,true); if(tag(o)==='ANMF'){ const b=o+8; fr.push({x:rd(b)*2,y:rd(b+3)*2,w:rd(b+6)+1,h:rd(b+9)+1,dur:rd(b+12),fl:u[b+15],data:u.subarray(b+16,b+L)}); } o+=8+L+(L&1); }
+  if(!fr.length) return null;
+  const acv=document.createElement('canvas'); acv.width=CW; acv.height=CH; const g=acv.getContext('2d');
+  const still=(f)=>{ const n=4+18+f.data.length, out=new Uint8Array(8+n+(n&1)), v=new DataView(out.buffer); out.set([82,73,70,70],0); v.setUint32(4,n+(n&1),true); out.set([87,69,66,80,86,80,56,88],8); v.setUint32(16,10,true); out[20]=0x10;
+    out[24]=(f.w-1)&255; out[25]=((f.w-1)>>8)&255; out[26]=((f.w-1)>>16)&255; out[27]=(f.h-1)&255; out[28]=((f.h-1)>>8)&255; out[29]=((f.h-1)>>16)&255; out.set(f.data,30); return out; };
+  return {w:CW,h:CH,n:fr.length,async*iter(){
+    for(const f of fr){
+      const bmp=await createImageBitmap(new Blob([still(f)],{type:'image/webp'}));
+      if(f.fl&2) g.clearRect(f.x,f.y,f.w,f.h); g.drawImage(bmp,f.x,f.y);
+      yield {img:acv,dur:f.dur<20?100:f.dur,done:()=>{ try{ bmp.close(); }catch(e){} if(f.fl&1) g.clearRect(f.x,f.y,f.w,f.h); }};
+    }
+  }};
+}
+async function openAnim(buf,kind){
+  if(window.ImageDecoder){
+    try{
+      const dec=new ImageDecoder({data:buf,type:kind==='image/apng'?'image/png':kind}); await dec.tracks.ready; const n=dec.tracks.selectedTrack.frameCount||1; const first=(await dec.decode({frameIndex:0})).image;
+      if(n>1) return {w:first.displayWidth,h:first.displayHeight,n,async*iter(){ for(let i=0;i<n;i++){ const fr=i===0?first:(await dec.decode({frameIndex:i})).image; const d=(fr.duration||0)/1000; yield {img:fr,dur:d<20?100:d,done:()=>{ try{ fr.close(); }catch(e){} }}; } try{ dec.close(); }catch(e){} }};
+    }catch(e){}
+  }
+  try{ if(kind==='image/webp') return openWebpJs(buf); if(kind==='image/gif') return openGifJs(buf); }catch(e){ console.warn('own decoder failed',e); }
+  return null;
+}
 async function gifToVideoFile(file,onProg,kind){
   kind=kind||'image/gif'; const base=(file.name||'animation').replace(/\.(gif|webp|png|apng)$/i,'');
-  if(window.ImageDecoder&&window.VideoEncoder&&window.Mp4Muxer){
+  if(window.VideoEncoder&&window.Mp4Muxer){
     try{
-      const buf=await file.arrayBuffer(); const dec=new ImageDecoder({data:buf,type:kind==='image/apng'?'image/png':kind}); await dec.tracks.ready;
-      const tr0=dec.tracks.selectedTrack, n=tr0.frameCount||1; let first=(await dec.decode({frameIndex:0})).image;
-      let w=first.displayWidth, h=first.displayHeight; const mx=1280, k0=Math.min(1,mx/Math.max(w,h)); let W=Math.max(2,Math.round(w*k0/2)*2), H=Math.max(2,Math.round(h*k0/2)*2);
+      const src=await openAnim(await file.arrayBuffer(),kind); if(!src) throw new Error('enc');
+      const w=src.w, h=src.h, n=src.n; const mx=1280, k0=Math.min(1,mx/Math.max(w,h)); let W=Math.max(2,Math.round(w*k0/2)*2), H=Math.max(2,Math.round(h*k0/2)*2);
       const cfg={codec:'avc1.640028',width:W,height:H,bitrate:Math.round(W*H*6),framerate:30,avc:{format:'avc'}};
       const sup=await VideoEncoder.isConfigSupported(cfg); if(!sup||!sup.supported) throw new Error('enc');
       const cv=document.createElement('canvas'); cv.width=W; cv.height=H; const g=cv.getContext('2d');
       const muxer=new Mp4Muxer.Muxer({target:new Mp4Muxer.ArrayBufferTarget(),video:{codec:'avc',width:W,height:H,frameRate:30},fastStart:'in-memory',firstTimestampBehavior:'offset'});
       let err=null; const enc=new VideoEncoder({output:(c,m)=>{ try{ muxer.addVideoChunk(c,m); }catch(e){ err=e; } },error:e=>{ err=e; }}); enc.configure(cfg);
-      const G=1e6/30; let t=0, k=0; // t = end time (µs) of the frame being drawn
-      for(let i=0;i<n;i++){
-        const fr=i===0?first:(await dec.decode({frameIndex:i})).image; let dur=fr.duration||100000; if(dur<20000) dur=100000;
-        g.fillStyle='#fff'; g.fillRect(0,0,W,H); g.drawImage(fr,0,0,W,H); fr.close(); t+=dur;
+      const G=1e6/30; let t=0, k=0, i=0; // t = end time (µs) of the frame being drawn
+      for await(const f of src.iter()){
+        g.fillStyle='#fff'; g.fillRect(0,0,W,H); g.drawImage(f.img,0,0,W,H); f.done(); t+=f.dur*1000;
         while(k*G<t-1){ const vf=new VideoFrame(cv,{timestamp:Math.round(k*G),duration:Math.round(G)}); enc.encode(vf,{keyFrame:k%60===0}); vf.close(); k++; if(enc.encodeQueueSize>10) await new Promise(r=>setTimeout(r,2)); if(err) throw err; }
-        if(onProg) onProg(i+1,n);
+        i++; if(onProg) onProg(i,n);
       }
-      await enc.flush(); if(err) throw err; muxer.finalize(); enc.close(); try{ dec.close(); }catch(e){}
+      await enc.flush(); if(err) throw err; muxer.finalize(); enc.close();
       return new File([muxer.target.buffer],base+'.mp4',{type:'video/mp4'});
     }catch(e){ if(e&&e.message&&!/^enc$/.test(e.message)) console.warn('GIF decode path failed',e); }
   }

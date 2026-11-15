@@ -715,7 +715,7 @@ a.tfc-chip:hover{border-color:var(--brand)}
 .tfp-sure{margin:0 auto 0 0;font-size:13px;color:var(--warn)}
 @media(max-width:640px){.tfp-cols{grid-template-columns:1fr}}
 </style>
-<style>.tfm-prior[hidden]{display:none}.tfm .kbtns .tfm-prior{margin-right:auto;flex:1 1 300px;min-width:0;justify-content:space-between;gap:4px 12px;padding:7px 12px}.tfp-w.wait{color:var(--warn);font-weight:600}</style>
+<style>.tfm-wait{margin-right:auto;align-self:center;color:var(--warn);font-weight:600;font-size:13px}.tfm-wait[hidden]{display:none}.tfm .kbtns .btn.primary:disabled{background:var(--line);border-color:var(--line);color:var(--muted);cursor:not-allowed}.tfm-prior[hidden]{display:none}.tfm .kbtns .tfm-prior{margin-right:auto;flex:1 1 300px;min-width:0;justify-content:space-between;gap:4px 12px;padding:7px 12px}.tfp-w.wait{color:var(--warn);font-weight:600}</style>
 <style>.tfm .kbtns .tfm-prior .tfp-ac .btn.sm{padding-left:8px;padding-right:8px}.tfm .kbtns .tfm-prior .tfp-t{white-space:nowrap}</style>
 <style>
 .toast{z-index:400}
@@ -8388,7 +8388,7 @@ async function openTfModal(rec,opts){
       const ac=el('span','tfp-ac'); if(has){ const b1=el('button','btn sm ghost',tr('Comparar copies')); b1.type='button'; b1.addEventListener('click',()=>dlg(false)); const b2=el('button','btn sm ghost',tr('Usar el copy actual')); b2.type='button'; b2.addEventListener('click',()=>dlg(true)); ac.append(b1,el('i','tfp-sep'),b2,el('i','tfp-sep')); }
       const v=el('a','tfm-lnk',tr('Ver en Typefully')); v.href=B.url; v.target='_blank'; v.rel='noopener noreferrer'; ac.appendChild(v); pbox.appendChild(ac); }
     paint();
-  }finally{ state.priorBusy=false; state.waiting=false; } })();
+  }finally{ state.priorBusy=false; state.waiting=false; if(state.upd) state.upd(); } })();
   const sch=el('div','tfm-sch'); const sh=el('div','tfm-sh'); sh.appendChild(el('b',null,tr('Cuándo'))); const nowEl=el('span','tfm-now'); sh.appendChild(nowEl); const paintNow=()=>{ if(!document.body.contains(ov)) { clearInterval(nowT); return; } const t=Date.now(), z=state.tz||'Europe/Stockholm'; nowEl.textContent=tr('Ahora')+': '+tfFmtLocal(t)+' ('+tr('tu hora')+') · '+tfFmtTime(t,z)+' '+tfTzName(z); }; const nowT=setInterval(paintNow,15000); setTimeout(paintNow,0); state.paintNow=paintNow; const tabs=el('div','tfm-tabs'); const lsp=(a,b)=>'<span class="l-lg"></span><span class="l-sm"></span>'; const t1=el('button','btn sm on'), t2=el('button','btn sm'); [[t1,'En un hueco de la cola','En la cola'],[t2,'Solo guardar como borrador','Borrador']].forEach(([b,l,sh])=>{ const a=el('span','l-lg',tr(l)), c=el('span','l-sm',tr(sh)); b.append(a,c); b.title=tr(l); }); t1.type=t2.type='button'; tabs.append(t1,t2); if(!UPD) sh.appendChild(tabs); sch.appendChild(sh);
   const vw=el('div','tfm-vw'); const v1=el('button','tfm-vb on',tr('Todos los días')), v2=el('button','tfm-vb',tr('Un día')); v1.type=v2.type='button'; vw.append(v1,v2); const vrow=el('div','tfm-vrow'); vrow.appendChild(vw); sch.appendChild(vrow);
   const dayBar=el('div','tfm-days'); dayBar.hidden=true; sch.appendChild(dayBar);
@@ -8430,7 +8430,7 @@ async function openTfModal(rec,opts){
   const slotBox=el('div','tfm-slots'); slotBox.appendChild(el('p','dim ld',tr('Cargando huecos…'))); sch.appendChild(slotBox); const sum=el('p','tfm-sum'); sch.appendChild(sum); if(UPD){ const kb=el('button','btn sm ghost tfm-keep',tr('Mantener el horario actual')); kb.type='button'; kb.hidden=true; kb.addEventListener('click',()=>{ state.slot=null; if(cuc&&cuc.checked){ cuc.checked=false; state.custom=false; pk.hidden=true; } paintSlots(); state.upd(); }); sch.appendChild(kb); state.keepBtn=kb; } box.appendChild(sch);
   const prog=el('div','tfm-prog'); prog.hidden=true; const pbar=el('div','tfm-pbar'); const pfill=el('i'); pbar.appendChild(pfill); const ptxt=el('span','tfm-ptxt'); prog.append(ptxt,pbar);
   const msg=el('p','gh-msg'); msg.setAttribute('role','status');
-  const btns=el('div','kbtns'); const send=el('button','btn primary',tr('Programar en Typefully')); send.type='button'; const cl=el('button','btn ghost',tr('Cancelar')); cl.type='button'; btns.append(msg,prog,cl,send); box.appendChild(btns);
+  const btns=el('div','kbtns'); const send=el('button','btn primary',tr('Programar en Typefully')); send.type='button'; const cl=el('button','btn ghost',tr('Cancelar')); cl.type='button'; const wmsg=el('span','tfm-wait'); wmsg.setAttribute('role','status'); btns.append(wmsg,msg,prog,cl,send); box.appendChild(btns);
   function close(){ ov.remove(); document.removeEventListener('keydown',onKey); if(state.sentOk&&opts&&opts.editor){ try{ resetAll(true); setFmt('image'); window.scrollTo({top:0}); }catch(e){} } [state.thumb,state.icon].forEach(u=>{ if(u) try{ URL.revokeObjectURL(u); }catch(e){} }); } function onKey(e){ if(e.key==='Escape'&&!state.busy) close(); }
   const picked=()=>cards.filter(cd=>cd._cb.checked);
   state.upd=()=>{ const n=picked().length;
@@ -8438,7 +8438,7 @@ async function openTfModal(rec,opts){
     if(UPD){ if(!state.slot) s=tr('Se mantiene el horario actual')+(UMS?' ('+tfFmtDay(UMS,undefined,true)+', '+tfFmtLocal(UMS)+')':''); else s=tr('Se moverá al {d}, {t} (tu hora) · {t2} ({z})',{d:tfFmtDay(state.slot.ms,undefined,true),t:tfFmtLocal(state.slot.ms),t2:tfFmtTime(state.slot.ms,state.tz),z:tfTzName(state.tz)}); if(state.keepBtn) state.keepBtn.hidden=!state.slot; }
     else if(state.mode==='slot'){ if(!state.slot){ ok=false; s=tr(state.custom?'Elige una fecha y hora futuras.':'Elige un hueco.'); } else s=tr('Se programará el {d}, {t} (tu hora) · {t2} ({z})',{d:tfFmtDay(state.slot.ms,undefined,true),t:tfFmtLocal(state.slot.ms),t2:tfFmtTime(state.slot.ms,state.tz),z:tfTzName(state.tz)}); }
     else s=tr('Se guardará como borrador, sin fecha.');
-    sum.textContent=s; send.disabled=!ok||state.busy; send.textContent=UPD?tr('Actualizar en Typefully'):(state.mode==='slot'?tr('Programar en Typefully'):tr('Guardar borrador en Typefully')); };
+    sum.textContent=s; wmsg.textContent=state.priorBusy?WAITMSG:''; wmsg.hidden=!state.priorBusy; send.disabled=!ok||state.busy||!!state.priorBusy; send.title=state.priorBusy?WAITMSG:''; send.textContent=UPD?tr('Actualizar en Typefully'):(state.mode==='slot'?tr('Programar en Typefully'):tr('Guardar borrador en Typefully')); };
   const tagName=(t)=>state.tagMap[t]||state.tagMap[String(t).toLowerCase()]||t;
   const nmS=i=>(i.label||'').trim().slice(0,40)||tr('Publicación');
   async function reloadSlots(){ try{ const r=await tfLoadSlots(c.ss); state.slots=r; state.tz=r.tz; if(state.paintNow) state.paintNow(); const keep=state.slot&&(state.slot.custom?state.slot:r.items.find(x=>x.free&&Math.abs(x.ms-state.slot.ms)<60000)); state.slot=keep||(UPD?null:r.items.find(x=>x.free&&x.ms>Date.now()+120000))||null; }catch(e){} paintSlots(); state.upd(); }

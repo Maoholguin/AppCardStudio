@@ -117,7 +117,8 @@ input[type=text],input[type=url],select,textarea{width:100%;min-width:0;height:3
 textarea{height:auto;min-height:86px;padding:8px 10px;resize:vertical;line-height:1.4}
 input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--brand);outline-offset:1px}
 input::placeholder,textarea::placeholder{color:var(--muted-2)}
-.drop-btn{width:30px;height:30px;padding:0;margin-left:6px;display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;flex:none}
+.drop-wrap{display:inline-flex;align-items:center;gap:6px;align-self:flex-start}
+.drop-btn{width:30px;height:30px;padding:0;margin-left:0;display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;flex:none}
 .drop-btn.on{background:var(--brand-soft,#e6f1fb);border-color:var(--brand,#1a73c8);color:var(--brand,#1a73c8)}
 .drop-tip{position:fixed;z-index:9999;pointer-events:none;display:none;align-items:center;gap:6px;padding:3px 7px 3px 4px;background:var(--bg);border:1px solid var(--line-2);border-radius:var(--radius);box-shadow:0 2px 8px rgba(0,0,0,.18);font:600 11px/1 ui-monospace,Menlo,monospace;color:var(--text,#222)}
 .drop-tip::before{content:'';width:14px;height:14px;border-radius:3px;border:1px solid rgba(0,0,0,.25);background:var(--c)}
@@ -4917,6 +4918,8 @@ function parseDoc(doc){
     d.iconAlts=al; }
   const shots=[], seen=new Set();
   doc.querySelectorAll('[data-testid^="image-collection"] img').forEach(i=>{ const u=bigShot(lastSrc(i)); const k=u.split('/').pop(); if(u&&!seen.has(k)){ seen.add(k); shots.push(u); } });
+  /* the page only draws 4 <img>; the full gallery is listed in its inline JSON ("filename":"app_123_full.jpg") */
+  if(shots.length){ try{ const base=shots[0], pre=base.split('/').pop().replace(/_\d+_full\..*$/,'_'), txt=doc.documentElement.outerHTML; const rx=/filename\\*"\s*:\s*\\*"([A-Za-z0-9_.-]+_full\.[a-z0-9]+)/g; let m; while((m=rx.exec(txt))){ const k=m[1]; if(k.indexOf(pre)===0&&!seen.has(k)){ seen.add(k); shots.push(base.replace(/[^\/]+$/,k)); } } }catch(e){} }
   d.shots=shots; d.shotUrl=shots[0]||'';
   const can=doc.querySelector('link[rel="canonical"]')||doc.querySelector('meta[property="og:url"]');
   if(can) d.pageUrl=can.getAttribute('href')||can.getAttribute('content')||'';
@@ -4971,7 +4974,7 @@ function afterImport(how,got,links,imgMsg){
 function linksFor(){
   const L=[]; if(S.links.icon) L.push([tr('Ícono grande'),S.links.icon]);
   const shots=S.links.shots&&S.links.shots.length?S.links.shots:(S.links.shot?[S.links.shot]:[]);
-  shots.slice(0,6).forEach((u,i)=>L.push([shots.length>1?tr('Captura {n} grande',{n:i+1}):tr('Captura grande'),u]));
+  shots.slice(0,24).forEach((u,i)=>L.push([shots.length>1?tr('Captura {n} grande',{n:i+1}):tr('Captura grande'),u]));
   if(S.links.page) L.push([tr('Página de la app'),S.links.page]); return L;
 }
 
@@ -4984,6 +4987,7 @@ function pageCollect(){
     var last=function(i){ var ss=(i.getAttribute('srcset')||'').split(',').map(function(x){ return x.trim().split(/\s+/)[0]; }).filter(Boolean); return ss.pop()||i.getAttribute('src')||''; };
     var shots=[], seen={};
     document.querySelectorAll('[data-testid^="image-collection"] img').forEach(function(i){ var u=abs(last(i)); var k=u.split('/').pop(); if(u&&!seen[k]){ seen[k]=1; shots.push(u); } });
+    if(shots.length){ try{ var pre=shots[0].split('/').pop().replace(/_\d+_full\..*$/,'_'); var txt=Array.prototype.map.call(document.scripts,function(x){ return x.textContent; }).join('\n'); var rx=/filename\\*"\s*:\s*\\*"([A-Za-z0-9_.-]+_full\.[a-z0-9]+)/g, mm; while((mm=rx.exec(txt))){ var kk=mm[1]; if(kk.indexOf(pre)===0&&!seen[kk]){ seen[kk]=1; shots.push(shots[0].replace(/[^\/]+$/,kk)); } } }catch(e){} }
     var h1=document.querySelector('h1'); var nm=h1?h1.textContent.trim():'';
     var icon=''; var ic=Array.prototype.find.call(document.querySelectorAll('img'),function(i){ return (i.alt||'')===nm+' icon'; });
     if(ic) icon=abs(last(ic));
@@ -5034,7 +5038,7 @@ async function fetchPageImages(opts){
       urls={icon:bigIcon(j.icon||''),shots:(j.shots||[]).map(bigShot)};
     }
     const list=[]; if(urls.icon&&IMG_OK.test(urls.icon)) list.push({kind:'icon',url:urls.icon});
-    urls.shots.filter(u=>IMG_OK.test(u)).slice(0,8).forEach(u=>list.push({kind:'shot',url:u}));
+    urls.shots.filter(u=>IMG_OK.test(u)).slice(0,24).forEach(u=>list.push({kind:'shot',url:u}));
     if(!list.length) return {ok:false,reason:'none'};
     S.fetching={pending:list.length}; paintGallery();
     let got=0, nShots=0, hasIcon=false, firstErr=null;
@@ -7620,7 +7624,7 @@ async function bestIcon(main){
 async function fetchViaProxy(opts){
   const run=++fetchRun, alive=()=>run===fetchRun;
   const list=[]; if(opts.icon&&IMG_OK.test(opts.icon)) list.push({kind:'icon',url:opts.icon});
-  (opts.shots||[]).filter(u=>IMG_OK.test(u)).slice(0,8).forEach(u=>list.push({kind:'shot',url:u}));
+  (opts.shots||[]).filter(u=>IMG_OK.test(u)).slice(0,24).forEach(u=>list.push({kind:'shot',url:u}));
   if(!list.length) return {ok:false,reason:'none'};
   S.fetching={pending:list.length}; paintGallery();
   let got=0,nShots=0,hasIcon=false,firstErr=null;
@@ -9786,7 +9790,7 @@ function dropStart(inp,btn){
 function dropAttach(inp){
   if(inp._drop) return; inp._drop=1;
   const b=el('button','btn sm drop-btn'); b.type='button'; b.innerHTML=DROP_SVG; b.title=tr('Gotero: toma un color de la tarjeta'); b.setAttribute('aria-label',b.title);
-  b.addEventListener('click',()=>dropStart(inp,b)); inp.insertAdjacentElement('afterend',b);
+  b.addEventListener('click',()=>dropStart(inp,b)); const w=el('span','drop-wrap'); inp.parentNode.insertBefore(w,inp); w.appendChild(inp); w.appendChild(b);
 }
 function dropScan(root){ (root.querySelectorAll?root.querySelectorAll('input[type=color]'):[]).forEach(dropAttach); }
 dropScan(document); new MutationObserver(ms=>{ ms.forEach(m=>m.addedNodes.forEach(n=>{ if(n.nodeType===1){ if(n.matches&&n.matches('input[type=color]')) dropAttach(n); dropScan(n); } })); }).observe(document.body,{childList:true,subtree:true});
